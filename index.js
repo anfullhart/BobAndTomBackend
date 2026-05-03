@@ -1,44 +1,54 @@
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const app = express();
 const cors = require("cors");
 const mysql = require("mysql");
 const session = require("express-session");
-const PORT = process.env.PORT || 3001
 
+const app = express();
+const PORT = process.env.PORT || 3001;
 
-
-
+// Database connection
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "toor",
-  database: "bits",
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
 });
-module.exports = db;
 
-//db.connect();
+db.connect((err) => {
+  if (err) {
+    console.error("Database connection failed:", err);
+    process.exit(1);
+  }
+  console.log("Connected to MySQL database.");
+});
+
+// Middleware
 app.use(
   cors({
-    origin: "https://bob-and-tom3-okg7.vercel.app/",
+    origin: process.env.CORS_ORIGIN,
     credentials: true
   })
 );
+
 app.use(
   session({
-    secret: "superSecretKey123", // change this later
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // true only in HTTPS production
+      secure: true,
       httpOnly: true,
+      sameSite: 'none'
     },
   })
 );
+
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// --- Auth middleware ---
+// Auth middleware
 const isAuthenticated = (req, res, next) => {
   if (req.session.user) {
     next();
@@ -63,6 +73,11 @@ const requireRole = (...allowedRoles) => {
   };
 };
 
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.json({ message: "Server is running" });
+});
+
 app.get("/api/admin/dashboard",
   isAuthenticated,
   requireRole("admin", "owner"),
@@ -74,63 +89,73 @@ app.get("/api/admin/dashboard",
   }
 );
 
-
+// Delete bit
 app.post("/api/delete/bit", (req, res) => {
-
   const bitID = req.body.bitID;
 
   const deleteBit = "DELETE FROM tblbits WHERE BitID = ?";
-  db.query(deleteBit, [bitID], (err, result) => {});
+  db.query(deleteBit, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
   const deleteAlbum = "DELETE FROM tblalbum WHERE BitID = ?";
-  db.query(deleteAlbum, [bitID], (err, result) =>{});
+  db.query(deleteAlbum, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
   const deleteCategory = "DELETE FROM tblcategory WHERE BitID = ?";
-  db.query(deleteCategory, [bitID], (err, result) => {});
+  db.query(deleteCategory, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
   const deleteCelebrity = "DELETE FROM tblcelebrity WHERE BitID = ?";
-  db.query(deleteCelebrity, [bitID], (err, result) => {});
+  db.query(deleteCelebrity, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
   const deleteHyperlink = "DELETE FROM tblhyperlink WHERE BitID = ?";
-  db.query(deleteHyperlink, [bitID], (err, result) => {});
+  db.query(deleteHyperlink, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
   const deleteKeywords = "DELETE FROM tblkeywords WHERE BitID = ?";
-  db.query(deleteKeywords, [bitID], (err, result) => {});
+  db.query(deleteKeywords, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
   const deleteSeason = "DELETE FROM tblseason WHERE BitID = ?";
+  db.query(deleteSeason, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
   const deleteSport = "DELETE FROM tblsports WHERE BitID = ?";
-  db.query(deleteSport, [bitID], (err, result) => {});
+  db.query(deleteSport, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
   const deleteSubject = "DELETE FROM tblsubject WHERE BitID = ?";
-  db.query(deleteSubject, [bitID], (err, result) => {});
+  db.query(deleteSubject, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
+  res.json({ message: "Bit deleted" });
 });
 
+// Delete log
 app.post("/api/delete/log", (req, res) => {
   const RS_ID = req.body.RS_ID;
-  
-  const deleteLog = "DELETE e, k, d FROM tblrunentries e JOIN tblrunkey k ON e.L_ID = k.L_ID JOIN tblrunsheetdate d ON k.RS_ID = d.RS_ID WHERE k.RS_ID = ?;"
-  db.query(deleteLog, RS_ID, (err, result) => {
-    if(err){
+
+  const deleteLog = "DELETE e, k, d FROM tblrunentries e JOIN tblrunkey k ON e.L_ID = k.L_ID JOIN tblrunsheetdate d ON k.RS_ID = d.RS_ID WHERE k.RS_ID = ?";
+  db.query(deleteLog, [RS_ID], (err, result) => {
+    if (err) {
       console.log(err);
+      return res.status(500).json({ error: "Failed to delete log" });
     }
-    res.send(result);
-  })
-})
-/*
-app.get("/", (req, res) => {
- //res.send("did it send?");
- const sqlSelect = "SELECT * FROM bits.tblartist";
-  // res.send()
-  db.query(sqlSelect, (err, result) => {
-  console.log("result: " + result);
-  console.log("error: "+ err);
-  res.send(result);
-  
-})
-  
-});*/
+    res.json({ message: "Log deleted" });
+  });
+});
 
-
+// Edit run sheet
 app.post("/api/edit/runSheet", (req, res) => {
   const { RS_ID, logDate, data, deletedRows } = req.body;
 
@@ -138,7 +163,6 @@ app.post("/api/edit/runSheet", (req, res) => {
     return res.status(400).json({ error: "Invalid payload" });
   }
 
-  // 0️⃣ DELETE removed rows first
   if (Array.isArray(deletedRows) && deletedRows.length > 0) {
     const deleteSql = `DELETE FROM tblrunentries WHERE L_ID IN (?)`;
     db.query(deleteSql, [deletedRows], (err) => {
@@ -146,12 +170,7 @@ app.post("/api/edit/runSheet", (req, res) => {
     });
   }
 
-  // 1️⃣ Update run sheet date
-  const updateDateSql = `
-    UPDATE tblrunsheetdate
-    SET RSDate = ?
-    WHERE RS_ID = ?
-  `;
+  const updateDateSql = `UPDATE tblrunsheetdate SET RSDate = ? WHERE RS_ID = ?`;
 
   db.query(updateDateSql, [logDate, RS_ID], (err) => {
     if (err) {
@@ -159,20 +178,14 @@ app.post("/api/edit/runSheet", (req, res) => {
       return res.status(500).json({ error: "Failed to update date" });
     }
 
-    // 2️⃣ Separate rows for update vs insert
     const rowsToUpdate = data.filter((row) => row.L_ID);
     const rowsToInsert = data.filter(
       (row) => !row.L_ID && (row.bTime || row.bitDesc || row.ArtistID)
     );
 
-    // 3️⃣ Update existing rows
     const updatePromises = rowsToUpdate.map((row) => {
       return new Promise((resolve, reject) => {
-        const updateSql = `
-          UPDATE tblrunentries
-          SET bTime = ?, bitDesc = ?, ArtistID = ?
-          WHERE L_ID = ?
-        `;
+        const updateSql = `UPDATE tblrunentries SET bTime = ?, bitDesc = ?, ArtistID = ? WHERE L_ID = ?`;
         db.query(updateSql, [row.bTime, row.bitDesc, row.ArtistID, row.L_ID], (err) => {
           if (err) reject(err);
           else resolve();
@@ -180,7 +193,6 @@ app.post("/api/edit/runSheet", (req, res) => {
       });
     });
 
-    // 4️⃣ Insert new rows with corresponding tblrunkey entries
     const insertPromises = rowsToInsert.map((row) => {
       return new Promise((resolve, reject) => {
         const insertKeySql = `INSERT INTO tblrunkey (RS_ID) VALUES (?)`;
@@ -188,11 +200,7 @@ app.post("/api/edit/runSheet", (req, res) => {
           if (err) return reject(err);
 
           const newL_ID = keyResult.insertId;
-
-          const insertEntrySql = `
-            INSERT INTO tblrunentries (L_ID, bTime, bitDesc, ArtistID)
-            VALUES (?, ?, ?, ?)
-          `;
+          const insertEntrySql = `INSERT INTO tblrunentries (L_ID, bTime, bitDesc, ArtistID) VALUES (?, ?, ?, ?)`;
           db.query(insertEntrySql, [newL_ID, row.bTime, row.bitDesc, row.ArtistID], (err) => {
             if (err) reject(err);
             else resolve();
@@ -201,7 +209,6 @@ app.post("/api/edit/runSheet", (req, res) => {
       });
     });
 
-    // 5️⃣ Run all updates and inserts
     Promise.all([...updatePromises, ...insertPromises])
       .then(() => {
         res.json({ message: "Run sheet updated successfully" });
@@ -213,15 +220,10 @@ app.post("/api/edit/runSheet", (req, res) => {
   });
 });
 
-
-
-
+// Insert run sheet
 app.post("/api/insert/runSheet", (req, res) => {
   const { logDate, rows } = req.body;
 
-  console.log("Received payload:", req.body);
-
-  // Validate input
   if (!logDate) {
     return res.status(400).send("logDate is required");
   }
@@ -230,7 +232,6 @@ app.post("/api/insert/runSheet", (req, res) => {
     return res.status(400).send("No rows provided");
   }
 
-  // Filter out empty rows
   const cleanedRows = rows
     .map(r => ({
       time: (r.time || "").trim(),
@@ -243,10 +244,8 @@ app.post("/api/insert/runSheet", (req, res) => {
     return res.status(400).send("All rows are empty");
   }
 
-  // Prepare data for bulk insert
   const values = cleanedRows.map(r => [r.time, r.desc, r.artist]);
 
-  // Step 1: Insert into tblrunentries
   const insertEntriesSQL = "INSERT INTO tblrunentries (bTime, bitDesc, ArtistID) VALUES ?";
   db.query(insertEntriesSQL, [values], (err, result) => {
     if (err) {
@@ -259,7 +258,6 @@ app.post("/api/insert/runSheet", (req, res) => {
       insertedIds.push(result.insertId + i);
     }
 
-    // Step 2: Ensure the RS_ID exists in tblrunsheetdate
     const selectRS_SQL = "SELECT RS_ID FROM tblrunsheetdate WHERE RSDate = ? LIMIT 1";
     db.query(selectRS_SQL, [logDate], (err, rsResult) => {
       if (err) {
@@ -268,7 +266,6 @@ app.post("/api/insert/runSheet", (req, res) => {
       }
 
       const attachRowsToSheet = (rs_id) => {
-        // Step 3: Insert into tblrunkey
         const runKeyValues = insertedIds.map(id => [rs_id, id]);
         const insertRunKeySQL = "INSERT INTO tblrunkey (RS_ID, L_ID) VALUES ?";
         db.query(insertRunKeySQL, [runKeyValues], (err) => {
@@ -283,7 +280,6 @@ app.post("/api/insert/runSheet", (req, res) => {
       if (rsResult.length > 0) {
         attachRowsToSheet(rsResult[0].RS_ID);
       } else {
-        // Insert new date if it doesn't exist
         const insertDateSQL = "INSERT INTO tblrunsheetdate (RSDate) VALUES (?)";
         db.query(insertDateSQL, [logDate], (err, insertDateResult) => {
           if (err) {
@@ -297,227 +293,125 @@ app.post("/api/insert/runSheet", (req, res) => {
   });
 });
 
+// Insert bit
+app.post("/api/insert/bit/", (req, res) => {
+  const { type, title, category, artist, date: airDate, autoNum, time, hyperlink1, hyperlink2, hyperlink3, hyperlink4, hyperlink5, hyperlink6 } = req.body;
 
+  const sqlInsert = "INSERT INTO tblbits (AirDate, Title, ArtistID, ProphetNum, Time, Type) VALUES (?, ?, ?, ?, ?, ?)";
+  db.query(sqlInsert, [airDate, title, artist, autoNum, time, type], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Failed to insert bit" });
+    }
 
-  /*
-  if (values.length) {
-    let sql = "INSERT INTO tblrunentries (bTime, bitDesc, ArtistID) VALUES ?";
-    console.log(values);
-    db.query(sql, [values], function (err, result) {
+    const primaryKey = result.insertId;
+    const sqlInsert2 = "INSERT INTO tblhyperlink (BitID, Hyperlink1, Hyperlink2, Hyperlink3, Hyperlink4, Hyperlink5, Hyperlink6) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    db.query(sqlInsert2, [primaryKey, hyperlink1, hyperlink2, hyperlink3, hyperlink4, hyperlink5, hyperlink6], (err) => {
       if (err) {
         console.log(err);
-        res.status(500).send(err);
-    } else {
-        const primaryKeys = [];
-        
-        for (let i = 0; i < values.length; i++) {
-            primaryKeys.push(result.insertId + i);
-        }
-
-        let sql2 = "SELECT RS_ID FROM tblrunkey ORDER BY RS_ID DESC LIMIT 1";
-        db.query(sql2, (err, result) => {
-          if(err){
-            console.log(err);
-            res.status(500).send(err);
-
-          }
-          else{
-            let rs_id = result[0].RS_ID + 1;
-            let rsvalues = [];
-            primaryKeys.forEach(key => {
-              rsvalues.push([rs_id, key]);
-            });
-            console.log(rsvalues);
-            let sql3 = "INSERT INTO tblrunkey (RS_ID, L_ID) VALUES ?";
-            db.query(sql3, [rsvalues], (err, result) => {
-              if(err){
-                console.log(err);
-                res.status(500).send(err);
-              }
-              else{
-                let sql4 = "INSERT INTO tblrunsheetdate (RS_ID, RSDate) VALUES (?, ?)";
-                db.query(sql4, [rs_id, logDate], (err, result) => {
-                  if(err){
-                    console.log(err);
-                    res.status(500).send(err);
-                  }
-                })
-              }
-            })
-          }
-          
-        })
-    }
-    });
-  }*/
-
-
-app.post("/api/insert/bit/", (req, res) => {
-  const type = req.body.type;
-  const title = req.body.title;
-  const category = req.body.category;
-  const artist = req.body.artist;
-  const airDate = req.body.date;
-  
- 
-  const autoNum = req.body.autoNum;
-  const sub1 = req.body.sub1;
-  const sub2 = req.body.sub2;
-  const sub3 = req.body.sub3;
-  const sub4 = req.body.sub4;
-  const celebrity1 = req.body.celebrity1;
-  const celebrity2 = req.body.celebrity2;
-  const sport = req.body.sport;
-  const season = req.body.season;
-  const keywords = req.body.keywords;
-  const hyperlink1 = req.body.hyperlink;
-  const hyperlink2 = req.body.hyperlink;
-  const hyperlink3 = req.body.hyperlink;
-  const hyperlink4 = req.body.hyperlink;
-  const hyperlink5 = req.body.hyperlink;
-  const hyperlink6 = req.body.hyperlink;
-  const album1 = req.body.album1;
-  const track1 = req.body.track1;
-  const album2 = req.body.album2;
-  const track2 = req.body.track2;
-  const album3 = req.body.album3;
-  const track3 = req.body.track3;
-  const album4 = req.body.album4;
-  const track4 = req.body.track4;
-
-  
-  const time = req.body.time;
-  
-  
-  
-  
-  const sqlInsert =  "INSERT INTO tblbits (AirDate, Title, ArtistID, ProphetNum, Time, Type) VALUES (?, ?, ?, ?, ?, ?);";
-   db.query(sqlInsert, [airDate, title, artist, autoNum, time, type], (err, result) => {
-   // console.log(result);
-   if(err) {
-    console.log(err);
-  } else {
-    // Retrieve the primary key of the newly inserted row
-    const primaryKey = result.insertId;
-    // Insert the primary key into a different table
-    const sqlInsert2 = "INSERT INTO tblhyperlink (BitID, Hyperlink1, Hyperlink2, Hyperlink3, Hyperlink4, Hyperlink5, Hyperlink6) VALUES (?, ?, ?, ?, ?, ?, ?);";
-    db.query(sqlInsert2, [primaryKey, hyperlink1, hyperlink2, hyperlink3, hyperlink4, hyperlink5, hyperlink6], (err, result) => {
-      if(err) {
-        console.log(err);
+        return res.status(500).json({ error: "Failed to insert hyperlinks" });
       }
+      res.json({ message: "Bit inserted successfully", bitID: primaryKey });
     });
-  }
-
-   
-   });
-
-  
-  
+  });
 });
 
+// Get run sheet
 app.get("/api/get/runSheet/:RS_ID", (req, res) => {
   const RS_ID = req.params.RS_ID;
 
- const sql = `
-  SELECT 
-    rk.RS_ID,
-    rsd.RSDate,
-    e.L_ID,
-    e.bTime,
-    e.bitDesc,
-    e.ArtistID
-  FROM tblrunkey rk
-  JOIN tblrunentries e ON rk.L_ID = e.L_ID
-  JOIN tblrunsheetdate rsd ON rk.RS_ID = rsd.RS_ID
-  WHERE rk.RS_ID = ?
-  ORDER BY e.bTime ASC
-`;
+  const sql = `
+    SELECT 
+      rk.RS_ID,
+      rsd.RSDate,
+      e.L_ID,
+      e.bTime,
+      e.bitDesc,
+      e.ArtistID
+    FROM tblrunkey rk
+    JOIN tblrunentries e ON rk.L_ID = e.L_ID
+    JOIN tblrunsheetdate rsd ON rk.RS_ID = rsd.RS_ID
+    WHERE rk.RS_ID = ?
+    ORDER BY e.bTime ASC
+  `;
 
   db.query(sql, [RS_ID], (err, result) => {
     if (err) {
       console.error("Error fetching run sheet:", err);
       return res.status(500).json({ error: "Database error" });
     }
-
     res.json(result);
   });
 });
 
+// Get lookups
 app.get("/api/get/celebrity", (req, res) => {
-    const sqlSelect = "SELECT * FROM tblcelebkey;";
-    db.query(sqlSelect, (err, result) => {
-        res.send(result);
-    })
-})
+  const sqlSelect = "SELECT * FROM tblcelebkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
+});
 
 app.get("/api/get/subject", (req, res) => {
-    const sqlSelect = "SELECT * FROM tblsubjectkey;"
-    db.query(sqlSelect, (err, result) => {
-        res.send(result);
-    })
-})
+  const sqlSelect = "SELECT * FROM tblsubjectkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
+});
 
 app.get("/api/get/artist", (req, res) => {
-  
   const sqlSelect = "SELECT * FROM tblartist ORDER BY Name ASC;";
-  db.query(sqlSelect, (err, result) =>{
-      res.send(result);
-  })
-})
-
-
-
-
-
-
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
+});
 
 app.get("/api/get/category", (req, res) => {
-    const sqlSelect = "SELECT * FROM tblcatkey;";
-    db.query(sqlSelect, (err, result) =>{
-        res.send(result);
-    })
-})
+  const sqlSelect = "SELECT * FROM tblcatkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
+});
 
 app.get("/api/get/sport", (req, res) => {
-    const sqlSelect = "SELECT * FROM tblsportskey;";
-    db.query(sqlSelect, (err, result) =>{
-        res.send(result);
-    })
-})
+  const sqlSelect = "SELECT * FROM tblsportskey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
+});
 
 app.get("/api/get/season", (req, res) => {
-    const sqlSelect = "SELECT * FROM tblseasonkey;";
-    db.query(sqlSelect, (err, result) =>{
-        res.send(result);
-        
-    })
-})
+  const sqlSelect = "SELECT * FROM tblseasonkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
+});
 
 app.get("/api/get/album", (req, res) => {
-    const sqlSelect = "SELECT * FROM tblalbumkey;";
-    db.query(sqlSelect, (err, result) =>{
-        res.send(result);
-    })
-})
+  const sqlSelect = "SELECT * FROM tblalbumkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
+});
 
-
-// --- Login route ---
+// Auth routes
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
-  const sql = "SELECT role FROM tbllogin WHERE login = ? AND pass = ?";
+  const sql = "SELECT userid, role FROM tbllogin WHERE login = ? AND pass = ?";
 
   db.query(sql, [username, password], (err, result) => {
     if (err) return res.status(500).send({ error: err });
 
     if (result.length > 0) {
       req.session.user = {
+        userid: result[0].userid,
         username,
         role: result[0].role,
       };
 
       res.send({
         authenticated: true,
-        role: result[0].role,   // <-- REQUIRED
+        role: result[0].role,
       });
     } else {
       res.send({ authenticated: false });
@@ -525,14 +419,15 @@ app.post("/api/login", (req, res) => {
   });
 });
 
-// --- Logout route ---
 app.post("/api/logout", (req, res) => {
-  req.session.destroy(() => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to logout" });
+    }
     res.json({ loggedOut: true });
   });
 });
 
-// --- Check auth ---
 app.get("/api/auth/check", (req, res) => {
   if (req.session.user) {
     res.json({ authenticated: true, user: req.session.user });
@@ -541,7 +436,7 @@ app.get("/api/auth/check", (req, res) => {
   }
 });
 
-// Get all users (admin-only)
+// Admin routes
 app.get("/api/admin/users", (req, res) => {
   if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -557,7 +452,6 @@ app.get("/api/admin/users", (req, res) => {
   });
 });
 
-// --- Add a new user ---
 app.post("/api/admin/users", (req, res) => {
   if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -571,8 +465,11 @@ app.post("/api/admin/users", (req, res) => {
   });
 });
 
-// --- Edit user ---
 app.put("/api/admin/users/:id", (req, res) => {
+  if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const { username, password, role } = req.body;
   const { id } = req.params;
 
@@ -580,20 +477,10 @@ app.put("/api/admin/users/:id", (req, res) => {
   let params;
 
   if (password) {
-    // ✅ Update WITH password
-    sql = `
-      UPDATE tbllogin
-      SET login = ?, pass = ?, role = ?
-      WHERE userid = ?
-    `;
+    sql = `UPDATE tbllogin SET login = ?, pass = ?, role = ? WHERE userid = ?`;
     params = [username, password, role, id];
   } else {
-    // ✅ Update WITHOUT touching password
-    sql = `
-      UPDATE tbllogin
-      SET login = ?, role = ?
-      WHERE userid = ?
-    `;
+    sql = `UPDATE tbllogin SET login = ?, role = ? WHERE userid = ?`;
     params = [username, role, id];
   }
 
@@ -606,8 +493,6 @@ app.put("/api/admin/users/:id", (req, res) => {
   });
 });
 
-
-// --- Delete user ---
 app.delete("/api/admin/users/:userid", (req, res) => {
   if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -621,202 +506,137 @@ app.delete("/api/admin/users/:userid", (req, res) => {
   });
 });
 
+// Bit detail routes
 app.get("/api/get/bit/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlBit = "SELECT bits.BitID, bits.Title, bits.ProphetNum, bits.AirDate, bits.Time, bits.Type FROM tblbits bits WHERE bits.bitID = ?;"
-  db.query(sqlBit, id, (err, result) => {
-    
+  const sqlBit = "SELECT bits.BitID, bits.Title, bits.ProphetNum, bits.AirDate, bits.Time, bits.Type FROM tblbits bits WHERE bits.bitID = ?";
+  db.query(sqlBit, [id], (err, result) => {
     res.send(result);
-    
   });
-}
-);
+});
 
 app.get("/api/get/sport/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlSport = "SELECT sportskey.Sport FROM tblsportskey sportskey, tblsports sports WHERE sportskey.SportID = sports.SportID AND sports.bitID = ?;"
-  db.query(sqlSport, id, (err, result) => {
-    
+  const sqlSport = "SELECT sportskey.Sport FROM tblsportskey sportskey, tblsports sports WHERE sportskey.SportID = sports.SportID AND sports.bitID = ?";
+  db.query(sqlSport, [id], (err, result) => {
     res.send(result);
-    
   });
-}
-);
+});
 
 app.get("/api/get/subject/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  
-  const sqlSubject = "SELECT subjectkey.Subject FROM tblsubjectkey subjectkey, tblsubject subject WHERE subject.SubID = subjectkey.SubID AND subject.BitID = ?;" 
-  db.query(sqlSubject, id, (err, result) => {
-    
+  const sqlSubject = "SELECT subjectkey.Subject FROM tblsubjectkey subjectkey, tblsubject subject WHERE subject.SubID = subjectkey.SubID AND subject.BitID = ?";
+  db.query(sqlSubject, [id], (err, result) => {
     res.send(result);
-
   });
-}
-);
+});
+
 app.get("/api/get/celeb1/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlCeleb1 = "SELECT celebKey.Name FROM tblceleb celeb, tblcelebkey celebkey WHERE celeb.Celeb1_ID = celebkey.CelebID AND celeb.BitID = ?;"
-  db.query(sqlCeleb1, id, (err, result) => {
+  const sqlCeleb1 = "SELECT celebKey.Name FROM tblceleb celeb, tblcelebkey celebkey WHERE celeb.Celeb1_ID = celebkey.CelebID AND celeb.BitID = ?";
+  db.query(sqlCeleb1, [id], (err, result) => {
     res.send(result);
-    
   });
-}
-);
+});
 
 app.get("/api/get/celeb2/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlCeleb2 = "SELECT celebKey.Name FROM tblceleb celeb, tblcelebkey celebkey WHERE celeb.Celeb2_ID = celebkey.CelebID AND celeb.BitID = ?;"
-  db.query(sqlCeleb2, id, (err, result) => {
+  const sqlCeleb2 = "SELECT celebKey.Name FROM tblceleb celeb, tblcelebkey celebkey WHERE celeb.Celeb2_ID = celebkey.CelebID AND celeb.BitID = ?";
+  db.query(sqlCeleb2, [id], (err, result) => {
     res.send(result);
-    
   });
 });
 
 app.get("/api/get/season/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlSeason = "SELECT seasonkey.Season FROM tblseason season, tblseasonkey seasonkey WHERE season.SeasonID = seasonkey.SeasonID AND season.BitID = ?;"
-  db.query(sqlSeason, id, (err, result) => {
+  const sqlSeason = "SELECT seasonkey.Season FROM tblseason season, tblseasonkey seasonkey WHERE season.SeasonID = seasonkey.SeasonID AND season.BitID = ?";
+  db.query(sqlSeason, [id], (err, result) => {
     res.send(result);
   });
-}
-);
+});
+
 app.get("/api/get/category/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlCategory = "SELECT catkey.Category FROM tblcatkey catkey, tblcategory category WHERE category.CatID = catkey.CatID AND category.BitID = ?;"
-  db.query(sqlCategory, id, (err, result) => {
+  const sqlCategory = "SELECT catkey.Category FROM tblcatkey catkey, tblcategory category WHERE category.CatID = catkey.CatID AND category.BitID = ?";
+  db.query(sqlCategory, [id], (err, result) => {
     res.send(result);
-    
   });
-}
-);
+});
 
 app.get("/api/get/album/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlAlbum = "SELECT albumkey.Album_Name, album.Album_Track FROM tblalbumkey albumkey, tblalbum album WHERE album.AlbumID = albumkey.AlbumID AND album.BitID = ?;"
-  db.query(sqlAlbum, id, (err, result) => {
+  const sqlAlbum = "SELECT albumkey.Album_Name, album.Album_Track FROM tblalbumkey albumkey, tblalbum album WHERE album.AlbumID = albumkey.AlbumID AND album.BitID = ?";
+  db.query(sqlAlbum, [id], (err, result) => {
     res.send(result);
-    
   });
 });
 
 app.get("/api/get/hyperlink/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlHyperlink = "SELECT * FROM tblhyperlink hyperlink WHERE hyperlink.BitID = ?;"
-  db.query(sqlHyperlink, id, (err, result) => {
+  const sqlHyperlink = "SELECT * FROM tblhyperlink hyperlink WHERE hyperlink.BitID = ?";
+  db.query(sqlHyperlink, [id], (err, result) => {
     res.send(result);
-    
   });
 });
 
-  
-  
-
-
-
+// Search routes
 app.get("/api/get/log/:searchKeyword/:searchArtist/:searchDate/:searchType", (req, res) => {
-  const keyword = req.params.searchKeyword;
-  const artist = req.params.searchArtist;
-  const date = req.params.searchDate;
-  const type = req.params.searchType;
-  //console.log(req.params);
+  const { keyword, artist, date, type } = req.params;
+  const { searchKeyword, searchArtist, searchDate, searchType } = req.params;
 
-  if(type == "Artist"){
-    
-   // console.log("\nartist: "+ artist);
+  if (searchType == "Artist") {
     const sql1 = "SELECT tblrunentries.bitDesc, tblrunentries.bTime, tblartist.Name, tblrunsheetdate.RSDate, tblrunsheetdate.RS_ID FROM tblrunentries INNER JOIN tblrunkey ON tblrunentries.L_ID = tblrunkey.L_ID INNER JOIN tblrunsheetdate ON tblrunkey.RS_ID = tblrunsheetdate.RS_ID INNER JOIN tblartist ON tblrunentries.ArtistID = tblartist.ArtistID WHERE tblrunentries.ArtistID = ?";
-
-    db.query(sql1, artist, (err, result) => {
-      if(err){
-        console.log(err);
-      }
-      //console.log(result);
-      //console.log(result);
+    db.query(sql1, [searchArtist], (err, result) => {
+      if (err) console.log(err);
       res.send(result);
-    })
-  }
-  
-  else if(type == "Date"){
-    
-    const sql2 = "SELECT tblartist.Name, tblartist.ArtistID, tblrunentries.bTime, tblrunentries.L_ID, tblrunentries.bitDesc, tblrunsheetdate.RS_ID, tblrunsheetdate.RSDate FROM tblartist INNER JOIN tblrunentries ON tblrunentries.ArtistID = tblartist.ArtistID INNER JOIN tblrunkey ON tblrunkey.L_ID = tblrunentries.L_ID  INNER JOIN tblrunsheetdate ON tblrunsheetdate.RS_ID = tblrunkey.RS_ID WHERE LOCATE(?, tblrunsheetdate.RSDate) > 0;"
-    db.query(sql2, date, (err, result) => {
-
-      if(err){
-        console.log(err);
-      }
-
-//      console.log(result);
+    });
+  } else if (searchType == "Date") {
+    const sql2 = "SELECT tblartist.Name, tblartist.ArtistID, tblrunentries.bTime, tblrunentries.L_ID, tblrunentries.bitDesc, tblrunsheetdate.RS_ID, tblrunsheetdate.RSDate FROM tblartist INNER JOIN tblrunentries ON tblrunentries.ArtistID = tblartist.ArtistID INNER JOIN tblrunkey ON tblrunkey.L_ID = tblrunentries.L_ID INNER JOIN tblrunsheetdate ON tblrunsheetdate.RS_ID = tblrunkey.RS_ID WHERE LOCATE(?, tblrunsheetdate.RSDate) > 0";
+    db.query(sql2, [searchDate], (err, result) => {
+      if (err) console.log(err);
       res.send(result);
-    })
-  }
-  else if(type == "keyword"){
-    
-    const sql3 = "SELECT tblartist.Name, tblartist.ArtistID, tblrunentries.bTime, tblrunentries.L_ID, tblrunentries.bitDesc, tblrunsheetdate.RS_ID, tblrunsheetdate.RSDate FROM tblrunentries JOIN tblrunkey ON tblrunentries.L_ID = tblrunkey.L_ID  JOIN tblrunsheetdate ON tblrunkey.RS_ID = tblrunsheetdate.RS_ID JOIN tblartist ON tblrunentries.ArtistID = tblartist.ArtistID WHERE LOCATE(?, tblrunentries.bitDesc) > 0";
-    db.query(sql3, keyword, (err, result) => {
-      if(err){
-        console.log(err);
-      }
+    });
+  } else if (searchType == "keyword") {
+    const sql3 = "SELECT tblartist.Name, tblartist.ArtistID, tblrunentries.bTime, tblrunentries.L_ID, tblrunentries.bitDesc, tblrunsheetdate.RS_ID, tblrunsheetdate.RSDate FROM tblrunentries JOIN tblrunkey ON tblrunentries.L_ID = tblrunkey.L_ID JOIN tblrunsheetdate ON tblrunkey.RS_ID = tblrunsheetdate.RS_ID JOIN tblartist ON tblrunentries.ArtistID = tblartist.ArtistID WHERE LOCATE(?, tblrunentries.bitDesc) > 0";
+    db.query(sql3, [searchKeyword], (err, result) => {
+      if (err) console.log(err);
       res.send(result);
-    })
+    });
+  } else {
+    res.status(400).json({ error: "Invalid search type" });
   }
-  else{
-  
-  }
-
-
 });
 
-
 app.get("/api/get/:searchBitID/:searchKeyword/:searchType", (req, res) => {
-  const keyword = req.params.searchKeyword;
-  const id = req.params.searchBitID;
-  const type = req.params.searchType;
+  const { searchKeyword, searchBitID, searchType } = req.params;
 
-  if (type == "Keyword") {
-    const sqlSelect =
-      "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND LOCATE(?, bits.Title) > 0;";
-    db.query(sqlSelect, (keyword, keyword), (err, result) => {
+  if (searchType == "Keyword") {
+    const sqlSelect = "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND LOCATE(?, bits.Title) > 0";
+    db.query(sqlSelect, [searchKeyword], (err, result) => {
       res.send(result);
     });
-  } else if (type=="Bit ID") {
-    const sqlSelect =
-      "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND bits.bitID = ?;";
-    db.query(sqlSelect, id, (err, result) => {
-      
+  } else if (searchType == "Bit ID") {
+    const sqlSelect = "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND bits.bitID = ?";
+    db.query(sqlSelect, [searchBitID], (err, result) => {
       res.send(result);
     });
-  }
-  else if(type=="Artist"){
-    const sqlSelect =
-      "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND LOCATE(?, artist.name) > 0;";
-    db.query(sqlSelect, id, (err, result) => {
+  } else if (searchType == "Artist") {
+    const sqlSelect = "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND LOCATE(?, artist.name) > 0";
+    db.query(sqlSelect, [searchBitID], (err, result) => {
       res.send(result);
     });
-
+  } else {
+    res.status(400).json({ error: "Invalid search type" });
   }
-
-
-
-  }
-);
-/*
-app.get("/api/get/supplimental/:searchBitID", (req, res) => {
-  const id = req.params.searchBitID;
-
-  const sqlSelect = "SELECT S"
-}) 
-*/
+});
 
 app.get("/api/get/log/:logID", (req, res) => {
   const id = req.params.logID;
-  const sqlSelect = "SELECT runkey.RS_ID FROM tblrunkey runkey WHERE L_ID = ?;"
-  db.query(sqlSelect, id, (err, result) => {
+  const sqlSelect = "SELECT runkey.RS_ID FROM tblrunkey runkey WHERE L_ID = ?";
+  db.query(sqlSelect, [id], (err, result) => {
     res.send(result);
   });
-
-  
-})
-
+});
 
 app.get("/api/get/log/details/:RS_ID", (req, res) => {
   const RS_ID = req.params.RS_ID;
@@ -847,128 +667,48 @@ app.get("/api/get/log/details/:RS_ID", (req, res) => {
   });
 });
 
-
-
-
-
-/*
+// Update bit
 app.post("/api/update/bit/", (req, res) => {
-  const bitID = req.body.bitID; 
-  const type = req.body.type;
-  const title = req.body.title;
-  const category = req.body.category;
-  const artist = req.body.artist;
-  const bitdate = req.body.date;
-  
-  const minutes = req.body.minutes;
-  const seconds = req.body.seconds;
-  const autoNum = req.body.autoNum;
-  const sub1 = req.body.sub1;
-  const sub2 = req.body.sub2;
-  const sub3 = req.body.sub3;
-  const sub4 = req.body.sub4;
-  const celebrity1 = req.body.celebrity1;
-  const celebrity2 = req.body.celebrity2;
-  const sport = req.body.sport;
-  const season = req.body.season;
-  const keywords = req.body.keywords;
-  const hyperlink = req.body.hyperlink;
-  const album1 = req.body.album1;
-  const track1 = req.body.track1;
-  const album2 = req.body.album2;
-  const track2 = req.body.track2;
-  const album3 = req.body.album3;
-  const track3 = req.body.track3;
-  const album4 = req.body.album4;
-  const track4 = req.body.track4;
+  const { bitID, type, title, time, autoNum } = req.body;
 
-
-  const sqlUpdate = "UPDATE tblbits SET type = ?, title = ?, category = ?, artist = ?, minutes = ?, seconds = ? WHERE BitID = ?;"
-  db.query(sqlUpdate, [type, title, category, artist, minutes, seconds, bitID], (err, result) => {
-
-  })
-})
-*/
-app.post("/api/update/bit/", (req, res) => {
-  const bitID = req.body.bitID; 
-  const type = req.body.type;
-  const title = req.body.title;
-  const category = req.body.category;
-  const artist = req.body.artist;
-  const bitdate = req.body.date;
-  const time = req.body.time;
-  const autoNum = req.body.autoNum;
-  const sub1 = req.body.sub1;
-  const sub2 = req.body.sub2;
-  const sub3 = req.body.sub3;
-  const sub4 = req.body.sub4;
-  const celebrity1 = req.body.celebrity1;
-  const celebrity2 = req.body.celebrity2;
-  const sport = req.body.sport;
-  const season = req.body.season;
-  const keywords = req.body.keywords;
-  const hyperlink = req.body.hyperlink;
-  const album1 = req.body.album1;
-  const track1 = req.body.track1;
-  const album2 = req.body.album2;
-  const track2 = req.body.track2;
-  const album3 = req.body.album3;
-  const track3 = req.body.track3;
-  const album4 = req.body.album4;
-  const track4 = req.body.track4;
-  
-//ArtistID = (SELECT ArtistID FROM tblartist WHERE Name LIKE ?),
-  const sqlUpdate = "UPDATE tblbits SET Title = ?, ProphetNum = ?, Time = ?, Type = ? WHERE BitID = ?;"
-  const sqlUpdate2 = "UPDATE tblcategory SET CatID = (SELECT CatID from tblcatkey WHERE Category LIKE ?) WHERE BitID = ?"
-  //const sqlUpdate3 = 
-  //const sqlUpdate4 = 
-  //console.log(title+" "+autoNum+" "+ time+" "+ type+" "+ bitID)
-  db.query(sqlUpdate, [title, autoNum, time, type, bitID], (err, result) => {
-    if(err) {
-      console.log(err);
-      //return res.status(500).send("Error updating bit");
-    }
-    
-    /*db.query(sqlUpdate2, ["%"+category+"%", bitID], (err, result) => {
-      if(err){
-        console.log(err);
-        return res.status(500).send("Error updating bit");
-      }
-    }*/
-
-    //);
-  
-  })
-});
-
-app.post("/api/insert/artist/", (req, res) => {
-  const name = req.body.name;
-  
-  
-
-  const sqlInsert = "INSERT INTO tblartist (Name) VALUES (?)";
-  db.query(sqlInsert, name, (err, result) => {
+  const sqlUpdate = "UPDATE tblbits SET Title = ?, ProphetNum = ?, Time = ?, Type = ? WHERE BitID = ?";
+  db.query(sqlUpdate, [title, autoNum, time, type, bitID], (err) => {
     if (err) {
       console.log(err);
-    
+      return res.status(500).json({ error: "Failed to update bit" });
     }
-    
+    res.json({ message: "Bit updated successfully" });
   });
 });
 
-app.post("/api/delete/artist", (req, res) =>{
-  const id = req.body.deleteArtist;
-  
-  const sql1 = 'DELETE FROM tblartist WHERE ArtistID = ?'
-  db.query(sql1, id, (err, result) => {
-    if(err){
+// Artist routes
+app.post("/api/insert/artist/", (req, res) => {
+  const name = req.body.name;
+
+  const sqlInsert = "INSERT INTO tblartist (Name) VALUES (?)";
+  db.query(sqlInsert, [name], (err) => {
+    if (err) {
       console.log(err);
+      return res.status(500).json({ error: "Failed to insert artist" });
     }
-  
-  })
-})
+    res.json({ message: "Artist added" });
+  });
+});
 
+app.post("/api/delete/artist", (req, res) => {
+  const id = req.body.deleteArtist;
 
+  const sql1 = 'DELETE FROM tblartist WHERE ArtistID = ?';
+  db.query(sql1, [id], (err) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Failed to delete artist" });
+    }
+    res.json({ message: "Artist deleted" });
+  });
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log("Server running on port ${PORT}\n--SERVER LOGS--\n\n");
+  console.log(`Server running on port ${PORT}`);
 });
