@@ -4,17 +4,26 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const mysql = require("mysql");
 const session = require("express-session");
+const MySQLStore = require("express-mysql-session")(session);
+const PORT = process.env.PORT || 3000; 
 
 const app = express();
 const PORT = "52386"
 
 // Database connection
-const db = mysql.createConnection({
-  host: "tramway.proxy.rlwy.net",
-  user: "root",
-  password: "RfGgOCaxAMOdgcuSEEDVgYTgnzRvzDDK",
-  database: "railway",
+const dbPool = mysql.createPool({
+  host: process.env.MYSQLHOST || "tramway.proxy.rlwy.net",
+  user: process.env.MYSQLUSER || "root",
+  password: process.env.MYSQLPASSWORD || "RfGgOCaxAMOdgcuSEEDVgYTgnzRvzDDK",
+  database: process.env.MYSQLDATABASE || "railway",
+  port: process.env.MYSQLPORT || 52386,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
+
+const db = dbPool;
+const sessionStore = new MySQLStore({}, dbPool);
 
 db.connect((err) => {
   if (err) {
@@ -27,20 +36,22 @@ db.connect((err) => {
 // Middleware
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
     credentials: true
   })
 );
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "bits_fallback_secure_string_secret", // Fixed deprecation warning
+    store: sessionStore, // Fixed production MemoryStore leak warning
     resave: false,
     saveUninitialized: false,
+    key: "bits_session_id",
     cookie: {
-      secure: true,
+      secure: process.env.NODE_ENV === "production", // Uses secure cookies automatically on Railway
       httpOnly: true,
-      sameSite: 'none'
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
     },
   })
 );
