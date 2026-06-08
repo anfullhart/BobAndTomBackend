@@ -6,14 +6,14 @@ const mysql = require("mysql");
 const session = require("express-session");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = "52386"
 
 // Database connection
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
+  host: "tramway.proxy.rlwy.net",
+  user: "root",
+  password: "RfGgOCaxAMOdgcuSEEDVgYTgnzRvzDDK",
+  database: "railway",
 });
 
 db.connect((err) => {
