@@ -713,18 +713,25 @@ app.post("/api/delete/artist", (req, res) => {
 });
 
 
-const ARTIST_ID = 1;
+const testArtistId = 1;
 // Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 
-  try {
-    // Replace 'http://localhost' with your Railway URL if testing externally
-    const response = axios.get(`https://bobandtom3-production.up.railway.app:${PORT}/api/artist/${ARTIST_ID}`);
-    
-    // Prints the 'Name' property from the returned row data
-    console.log(`Artist Name: ${response.data.Name}`);
+    try {
+    // Executes the query directly inside the listen callback
+    const [rows] = db.query(
+      'SELECT Name FROM tblartist WHERE ArtistID = ?', 
+      [testArtistId]
+    );
+
+    if (rows.length > 0) {
+      // Prints the Name directly to your terminal console
+      console.log(`[Startup Check] Artist Name for ID ${testArtistId}:`, rows[0].Name);
+    } else {
+      console.log(`[Startup Check] No artist found with ID: ${testArtistId}`);
+    }
   } catch (error) {
-    console.error("Error fetching artist data:", error.message);
+    console.error("[Startup Check] Database error:", error.message);
   }
 });
