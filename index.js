@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const mysql = require("mysql");
+const mysql = require("mysql2");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const PORT = process.env.PORT || 3000; 
