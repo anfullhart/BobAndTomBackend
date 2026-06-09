@@ -717,7 +717,7 @@ const testArtistId = 1;
 // Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
-  const sqlStartup = "SELECT Name FROM tblartist WHERE ArtistID = 1;";
+  const sqlStartup = "SELECT Name FROM tblartist WHERE ArtistID = 2;";
 
   // Executes right when the server starts listening
   db.query(sqlStartup, (err, result) => {
