@@ -720,7 +720,7 @@ app.listen(PORT, "0.0.0.0", () => {
 
   try {
     // Replace 'http://localhost' with your Railway URL if testing externally
-    const response = await axios.get(`https://bobandtom3-production.up.railway.app:${PORT}/api/artist/${ARTIST_ID}`);
+    const response = axios.get(`https://bobandtom3-production.up.railway.app:${PORT}/api/artist/${ARTIST_ID}`);
     
     // Prints the 'Name' property from the returned row data
     console.log(`Artist Name: ${response.data.Name}`);
