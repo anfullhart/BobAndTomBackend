@@ -757,6 +757,41 @@ app.post("/api/delete/celebrity", (req, res) => {
 });
 
 
+// Get Seasons
+app.get("/api/get/seasons", (req, res) => {
+    const sql = "SELECT * FROM tblseasonkey ORDER BY sorder, Season";
+
+    db.query(sql, (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+// Insert Season
+app.post("/api/insert/season", (req, res) => {
+    const season = req.body.season;
+
+    const sql = "INSERT INTO tblseasonkey (Season) VALUES (?)";
+
+    db.query(sql, [season], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+// Delete Season
+app.post("/api/delete/season", (req, res) => {
+    const id = req.body.deleteSeason;
+
+    const sql = "DELETE FROM tblseasonkey WHERE SeasonID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+
 const testArtistId = 1;
 // Start server
 app.listen(PORT, "0.0.0.0", () => {
