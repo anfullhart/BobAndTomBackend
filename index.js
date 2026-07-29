@@ -713,6 +713,50 @@ app.post("/api/delete/artist", (req, res) => {
 });
 
 
+// Get celebrity list
+app.get("/api/get/celebrities", (req, res) => {
+    const sql = "SELECT * FROM tblcelebkey ORDER BY Name";
+
+    db.query(sql, (err, result) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        res.send(result);
+    });
+});
+
+// Add celebrity
+app.post("/api/insert/celebrity", (req, res) => {
+    const name = req.body.name;
+
+    const sql = "INSERT INTO tblcelebkey (Name) VALUES (?)";
+
+    db.query(sql, [name], (err, result) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        res.send(result);
+    });
+});
+
+// Delete celebrity
+app.post("/api/delete/celebrity", (req, res) => {
+    const celebID = req.body.deleteCelebrity;
+
+    const sql = "DELETE FROM tblcelebkey WHERE CelebID = ?";
+
+    db.query(sql, [celebID], (err, result) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        res.send(result);
+    });
+});
+
+
 const testArtistId = 1;
 // Start server
 app.listen(PORT, "0.0.0.0", () => {
@@ -726,10 +770,4 @@ app.listen(PORT, "0.0.0.0", () => {
       return;
     }
     
-    // Prints the Name directly to your terminal console
-    if (result && result.length > 0) {
-      console.log(`Artist Name: ${result[0].Name}`);
-    } else {
-      console.log("No artist found with ArtistID 1");
-    }
 })});
