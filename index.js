@@ -791,6 +791,37 @@ app.post("/api/delete/season", (req, res) => {
     });
 });
 
+app.get("/api/get/sports", (req, res) => {
+    const sql = "SELECT * FROM tblsportskey ORDER BY Sport";
+
+    db.query(sql, (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+app.post("/api/insert/sport", (req, res) => {
+    const sport = req.body.sport;
+
+    const sql = "INSERT INTO tblsportskey (Sport) VALUES (?)";
+
+    db.query(sql, [sport], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+app.post("/api/delete/sport", (req, res) => {
+    const id = req.body.deleteSport;
+
+    const sql = "DELETE FROM tblsportskey WHERE SportID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
 
 const testArtistId = 1;
 // Start server
