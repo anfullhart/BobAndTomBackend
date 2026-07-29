@@ -822,6 +822,34 @@ app.post("/api/delete/sport", (req, res) => {
     });
 });
 
+app.get("/api/get/subjects", (req, res) => {
+    const sql = "SELECT * FROM tblsubjectkey ORDER BY Subject";
+
+    db.query(sql, (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+app.post("/api/insert/subject", (req, res) => {
+    const subject = req.body.subject;
+
+    const sql = "INSERT INTO tblsubjectkey (Subject) VALUES (?)";
+
+    db.query(sql, [subject], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+app.post("/api/delete/subject", (req, res) => {
+    const id = req.body.deleteSubject;
+
+    const sql = "DELETE FROM tblsubjectkey WHERE SubID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
 
 const testArtistId = 1;
 // Start server
