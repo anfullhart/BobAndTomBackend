@@ -950,6 +950,53 @@ app.post("/api/delete/subject", (req, res) => {
     });
 });
 
+// Get Albums
+app.get("/api/get/albums", (req, res) => {
+    const sql = "SELECT * FROM tblalbumkey ORDER BY Album_Name";
+
+    db.query(sql, (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Failed to get albums" });
+        }
+
+        res.send(result);
+    });
+});
+
+
+// Insert Album
+app.post("/api/insert/album", (req, res) => {
+    const album = req.body.album;
+
+    const sql = "INSERT INTO tblalbumkey (Album_Name) VALUES (?)";
+
+    db.query(sql, [album], (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Failed to insert album" });
+        }
+
+        res.send(result);
+    });
+});
+
+
+// Delete Album
+app.post("/api/delete/album", (req, res) => {
+    const id = req.body.deleteAlbum;
+
+    const sql = "DELETE FROM tblalbumkey WHERE AlbumID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Failed to delete album" });
+        }
+
+        res.send(result);
+    });
+});
 const testArtistId = 1;
 // Start server
 app.listen(PORT, "0.0.0.0", () => {
