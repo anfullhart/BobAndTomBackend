@@ -62,7 +62,7 @@ const isAuthenticated = (req, res, next) => {
 };
 
 const requireRole = (...allowedRoles) => {
-  return (req, res, next) => {
+  return (req, res, next) => {a
     if (!req.session.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -299,25 +299,124 @@ app.post("/api/insert/runSheet", (req, res) => {
 
 // Insert bit
 app.post("/api/insert/bit/", (req, res) => {
-  const { type, title, category, artist, date: airDate, autoNum, time, hyperlink1, hyperlink2, hyperlink3, hyperlink4, hyperlink5, hyperlink6 } = req.body;
+  const {
+    type,
+    title,
+    artist,
+    date: airDate,
+    autoNum,
+    time,
+    hyperlink1,
+    hyperlink2,
+    hyperlink3,
+    hyperlink4,
+    hyperlink5,
+    hyperlink6,
+    sub1,
+    sub2,
+    sub3,
+    sub4,
+    celebrity1,
+    celebrity2,
+    sport,
+    season,
+    keywords
+  } = req.body;
 
-  const sqlInsert = "INSERT INTO tblbits (AirDate, Title, ArtistID, ProphetNum, Time, Type) VALUES (?, ?, ?, ?, ?, ?)";
-  db.query(sqlInsert, [airDate, title, artist, autoNum, time, type], (err, result) => {
-    if (err) {
-      console.log(err);
-      return res.status(500).json({ error: "Failed to insert bit" });
-    }
 
-    const primaryKey = result.insertId;
-    const sqlInsert2 = "INSERT INTO tblhyperlink (BitID, Hyperlink1, Hyperlink2, Hyperlink3, Hyperlink4, Hyperlink5, Hyperlink6) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    db.query(sqlInsert2, [primaryKey, hyperlink1, hyperlink2, hyperlink3, hyperlink4, hyperlink5, hyperlink6], (err) => {
+  const sqlInsert =
+    "INSERT INTO tblbits (AirDate, Title, ArtistID, ProphetNum, Time, Type) VALUES (?, ?, ?, ?, ?, ?)";
+
+
+  db.query(
+    sqlInsert,
+    [airDate, title, artist, autoNum, time, type],
+    (err, result) => {
+
       if (err) {
-        console.log(err);
-        return res.status(500).json({ error: "Failed to insert hyperlinks" });
+        console.log("BIT INSERT ERROR:", err);
+        return res.status(500).json(err);
       }
-      res.json({ message: "Bit inserted successfully", bitID: primaryKey });
-    });
-  });
+
+
+      const bitID = result.insertId;
+
+
+      // Hyperlinks
+      const hyperlinkSQL =
+        "INSERT INTO tblhyperlink (BitID, Hyperlink1, Hyperlink2, Hyperlink3, Hyperlink4, Hyperlink5, Hyperlink6) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+      db.query(
+        hyperlinkSQL,
+        [
+          bitID,
+          hyperlink1,
+          hyperlink2,
+          hyperlink3,
+          hyperlink4,
+          hyperlink5,
+          hyperlink6
+        ]
+      );
+
+
+      // Celebrities
+      if (celebrity1 || celebrity2) {
+        db.query(
+          "INSERT INTO tblcelebrity (BitID, Celeb1_ID, Celeb2_ID) VALUES (?, ?, ?)",
+          [
+            bitID,
+            celebrity1 || null,
+            celebrity2 || null
+          ]
+        );
+      }
+
+
+      // Subjects
+      [sub1, sub2, sub3, sub4].forEach((sub) => {
+        if (sub) {
+          db.query(
+            "INSERT INTO tblsubject (BitID, SubID) VALUES (?, ?)",
+            [bitID, sub]
+          );
+        }
+      });
+
+
+      // Sport
+      if (sport) {
+        db.query(
+          "INSERT INTO tblsports (BitID, SportID) VALUES (?, ?)",
+          [bitID, sport]
+        );
+      }
+
+
+      // Season
+      if (season) {
+        db.query(
+          "INSERT INTO tblseason (BitID, SeasonID) VALUES (?, ?)",
+          [bitID, season]
+        );
+      }
+
+
+      // Keywords
+      if (keywords) {
+        db.query(
+          "INSERT INTO tblkeywords (BitID, Keywords) VALUES (?, ?)",
+          [bitID, keywords]
+        );
+      }
+
+
+      res.json({
+        message: "Bit inserted successfully",
+        bitID
+      });
+    }
+  );
 });
 
 // Get run sheet
