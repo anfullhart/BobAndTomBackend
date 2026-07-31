@@ -689,9 +689,27 @@ app.get("/api/get/category/info/:searchBitID", (req, res) => {
 
 app.get("/api/get/album/info/:searchBitID", (req, res) => {
   const id = req.params.searchBitID;
-  const sqlAlbum = "SELECT albumkey.Album_Name, album.Album_Track FROM tblalbumkey albumkey, tblalbum album WHERE album.AlbumID = albumkey.AlbumID AND album.BitID = ?";
-  db.query(sqlAlbum, [id], (err, result) => {
-    res.send(result);
+
+  const sql = `
+    SELECT
+      ak.Album_Name,
+      a.Album_Track
+    FROM tblalbum a
+    JOIN tblalbumkey ak
+      ON a.AlbumID = ak.AlbumID
+    WHERE a.BitID = ?
+    ORDER BY ak.Album_Name
+  `;
+
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error("Album query error:", err);
+      return res.status(500).json(err);
+    }
+
+    console.log("Albums:", result);
+
+    res.json(result);
   });
 });
 
