@@ -674,13 +674,23 @@ app.get("/api/get/album/info/:searchBitID", (req, res) => {
 });
 
 app.get("/api/get/hyperlink/info/:searchBitID", (req, res) => {
-  const id = req.params.searchBitID;
-  const sqlHyperlink = "SELECT * FROM tblhyperlink hyperlink WHERE hyperlink.BitID = ?";
-  db.query(sqlHyperlink, [id], (err, result) => {
-    res.send(result);
+  const bitID = req.params.searchBitID;
+
+  const sqlHyperlink =
+    "SELECT Hyperlink FROM tblhyperlink WHERE BitID = ?";
+
+  db.query(sqlHyperlink, [bitID], (err, result) => {
+    if (err) {
+      console.log("HYPERLINK GET ERROR:", err);
+      return res.status(500).json(err);
+    }
+
+    // Return an array of hyperlink strings
+    const hyperlinks = result.map(row => row.Hyperlink);
+
+    res.json(hyperlinks);
   });
 });
-
 // Search routes
 app.get("/api/get/log/:searchKeyword/:searchArtist/:searchDate/:searchType", (req, res) => {
   const { keyword, artist, date, type } = req.params;
