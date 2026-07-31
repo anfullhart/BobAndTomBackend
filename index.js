@@ -306,12 +306,7 @@ app.post("/api/insert/bit/", (req, res) => {
     date: airDate,
     autoNum,
     time,
-    hyperlink1,
-    hyperlink2,
-    hyperlink3,
-    hyperlink4,
-    hyperlink5,
-    hyperlink6,
+    hyperlinks = [],
     sub1,
     sub2,
     sub3,
@@ -323,10 +318,8 @@ app.post("/api/insert/bit/", (req, res) => {
     keywords
   } = req.body;
 
-
   const sqlInsert =
     "INSERT INTO tblbits (AirDate, Title, ArtistID, ProphetNum, Time, Type) VALUES (?, ?, ?, ?, ?, ?)";
-
 
   db.query(
     sqlInsert,
@@ -338,27 +331,23 @@ app.post("/api/insert/bit/", (req, res) => {
         return res.status(500).json(err);
       }
 
-
       const bitID = result.insertId;
 
+      // Insert one record for each hyperlink
+      if (Array.isArray(hyperlinks)) {
+        const hyperlinkSQL =
+          "INSERT INTO tblhyperlink (BitID, Hyperlink) VALUES (?, ?)";
 
-      // Hyperlinks
-      const hyperlinkSQL =
-        "INSERT INTO tblhyperlink (BitID, Hyperlink1, Hyperlink2, Hyperlink3, Hyperlink4, Hyperlink5, Hyperlink6) VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-      db.query(
-        hyperlinkSQL,
-        [
-          bitID,
-          hyperlink1,
-          hyperlink2,
-          hyperlink3,
-          hyperlink4,
-          hyperlink5,
-          hyperlink6
-        ]
-      );
-
+        hyperlinks
+          .filter(link => link && link.trim() !== "")
+          .forEach((link) => {
+            db.query(hyperlinkSQL, [bitID, link], (err) => {
+              if (err) {
+                console.log("HYPERLINK INSERT ERROR:", err);
+              }
+            });
+          });
+      }
 
       // Celebrities
       if (celebrity1 || celebrity2) {
@@ -368,48 +357,58 @@ app.post("/api/insert/bit/", (req, res) => {
             bitID,
             celebrity1 || null,
             celebrity2 || null
-          ]
+          ],
+          (err) => {
+            if (err) console.log("CELEBRITY INSERT ERROR:", err);
+          }
         );
       }
-
 
       // Subjects
       [sub1, sub2, sub3, sub4].forEach((sub) => {
         if (sub) {
           db.query(
             "INSERT INTO tblsubject (BitID, SubID) VALUES (?, ?)",
-            [bitID, sub]
+            [bitID, sub],
+            (err) => {
+              if (err) console.log("SUBJECT INSERT ERROR:", err);
+            }
           );
         }
       });
-
 
       // Sport
       if (sport) {
         db.query(
           "INSERT INTO tblsports (BitID, SportID) VALUES (?, ?)",
-          [bitID, sport]
+          [bitID, sport],
+          (err) => {
+            if (err) console.log("SPORT INSERT ERROR:", err);
+          }
         );
       }
-
 
       // Season
       if (season) {
         db.query(
           "INSERT INTO tblseason (BitID, SeasonID) VALUES (?, ?)",
-          [bitID, season]
+          [bitID, season],
+          (err) => {
+            if (err) console.log("SEASON INSERT ERROR:", err);
+          }
         );
       }
-
 
       // Keywords
       if (keywords) {
         db.query(
           "INSERT INTO tblkeywords (BitID, Keywords) VALUES (?, ?)",
-          [bitID, keywords]
+          [bitID, keywords],
+          (err) => {
+            if (err) console.log("KEYWORDS INSERT ERROR:", err);
+          }
         );
       }
-
 
       res.json({
         message: "Bit inserted successfully",
