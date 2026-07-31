@@ -306,6 +306,7 @@ app.post("/api/insert/bit/", (req, res) => {
     date: airDate,
     autoNum,
     time,
+    albums = [], 
     hyperlinks = [],
     sub1,
     sub2,
@@ -332,6 +333,27 @@ app.post("/api/insert/bit/", (req, res) => {
       }
 
       const bitID = result.insertId;
+
+      if (Array.isArray(albums)) {
+        const sqlAlbum =
+          "INSERT INTO tblalbum (BitID, AlbumID, Album_Track) VALUES (?, ?, ?)";
+
+        albums.filter(a => a.albumID).forEach(album => {
+          db.query(
+            sqlAlbum,
+              [
+                bitID,
+                album.albumID,
+                album.track || null
+              ],
+              (err) => {
+                if (err) {
+                    console.log("ALBUM INSERT ERROR:", err);
+                }
+              }
+            );
+        });
+      }
 
       // Insert one record for each hyperlink
       if (Array.isArray(hyperlinks)) {
