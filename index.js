@@ -112,7 +112,7 @@ app.post("/api/delete/bit", (req, res) => {
     if (err) console.log(err);
   });
 
-  const deleteCelebrity = "DELETE FROM tblcelebrity WHERE BitID = ?";
+  const deleteCelebrity = "DELETE FROM tblceleb WHERE BitID = ?";
   db.query(deleteCelebrity, [bitID], (err) => {
     if (err) console.log(err);
   });
@@ -374,7 +374,7 @@ app.post("/api/insert/bit/", (req, res) => {
       // Celebrities
       if (celebrity1 || celebrity2) {
         db.query(
-          "INSERT INTO tblcelebrity (BitID, Celeb1_ID, Celeb2_ID) VALUES (?, ?, ?)",
+          "INSERT INTO tblceleb (BitID, Celeb1_ID, Celeb2_ID) VALUES (?, ?, ?)",
           [
             bitID,
             celebrity1 || null,
