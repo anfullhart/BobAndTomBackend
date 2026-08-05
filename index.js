@@ -819,19 +819,278 @@ app.get("/api/get/log/details/:RS_ID", (req, res) => {
   });
 });
 
-// Update bit
-app.post("/api/update/bit/", (req, res) => {
-  const { bitID, type, title, time, autoNum } = req.body;
 
-  const sqlUpdate = "UPDATE tblbits SET Title = ?, ProphetNum = ?, Time = ?, Type = ? WHERE BitID = ?";
-  db.query(sqlUpdate, [title, autoNum, time, type, bitID], (err) => {
-    if (err) {
-      console.log(err);
-      return res.status(500).json({ error: "Failed to update bit" });
+// ==========================================
+// UPDATE BIT
+// ==========================================
+app.post("/api/update/bit", (req, res) => {
+  const {
+    bitID,
+    type,
+    title,
+    category,
+    artist,
+    date,
+    time,
+    autoNum,
+
+    sub1,
+    sub2,
+    sub3,
+    sub4,
+
+    celebrity1,
+    celebrity2,
+
+    sport,
+    season,
+
+    keywords,
+
+    hyperlinks = [],
+    albums = []
+  } = req.body;
+
+  if (!bitID) {
+    return res.status(400).json({
+      error: "bitID is required"
+    });
+  }
+
+  // ------------------------------------------
+  // 1. Update main bit
+  // ------------------------------------------
+
+  const updateBitSQL = `
+    UPDATE tblbits
+    SET
+      AirDate = ?,
+      Title = ?,
+      ArtistID = ?,
+      ProphetNum = ?,
+      Time = ?,
+      Type = ?
+    WHERE BitID = ?
+  `;
+
+  db.query(
+    updateBitSQL,
+    [
+      date || null,
+      title || null,
+      artist || null,
+      autoNum || null,
+      time || null,
+      type || null,
+      bitID
+    ],
+    (err) => {
+      if (err) {
+        console.error("BIT UPDATE ERROR:", err);
+
+        return res.status(500).json({
+          error: "Failed to update main bit",
+          details: err.message
+        });
+      }
+
+      // ------------------------------------------
+      // 2. Delete existing relationships
+      // ------------------------------------------
+
+      const deleteQueries = [
+        "DELETE FROM tblalbum WHERE BitID = ?",
+        "DELETE FROM tblhyperlink WHERE BitID = ?",
+        "DELETE FROM tblsubject WHERE BitID = ?",
+        "DELETE FROM tblceleb WHERE BitID = ?",
+        "DELETE FROM tblsports WHERE BitID = ?",
+        "DELETE FROM tblseason WHERE BitID = ?",
+        "DELETE FROM tblkeywords WHERE BitID = ?",
+        "DELETE FROM tblcategory WHERE BitID = ?"
+      ];
+
+      let completed = 0;
+
+      deleteQueries.forEach((sql) => {
+        db.query(sql, [bitID], (err) => {
+          if (err) {
+            console.error("RELATION DELETE ERROR:", err);
+          }
+
+          completed++;
+
+          if (completed === deleteQueries.length) {
+            insertRelationships();
+          }
+        });
+      });
+
+      // ------------------------------------------
+      // 3. Reinsert all relationships
+      // ------------------------------------------
+
+      const insertRelationships = () => {
+
+        // CATEGORY
+        if (category) {
+          db.query(
+            "INSERT INTO tblcategory (BitID, CatID) VALUES (?, ?)",
+            [bitID, category],
+            (err) => {
+              if (err) {
+                console.error("CATEGORY UPDATE ERROR:", err);
+              }
+            }
+          );
+        }
+
+        // SUBJECTS
+        [sub1, sub2, sub3, sub4]
+          .filter((sub) => sub)
+          .forEach((sub) => {
+            db.query(
+              "INSERT INTO tblsubject (BitID, SubID) VALUES (?, ?)",
+              [bitID, sub],
+              (err) => {
+                if (err) {
+                  console.error("SUBJECT UPDATE ERROR:", err);
+                }
+              }
+            );
+          });
+
+        // CELEBRITIES
+        if (celebrity1 || celebrity2) {
+          db.query(
+            `
+            INSERT INTO tblceleb
+            (BitID, Celeb1_ID, Celeb2_ID)
+            VALUES (?, ?, ?)
+            `,
+            [
+              bitID,
+              celebrity1 || null,
+              celebrity2 || null
+            ],
+            (err) => {
+              if (err) {
+                console.error("CELEBRITY UPDATE ERROR:", err);
+              }
+            }
+          );
+        }
+
+        // SPORT
+        if (sport) {
+          db.query(
+            "INSERT INTO tblsports (BitID, SportID) VALUES (?, ?)",
+            [bitID, sport],
+            (err) => {
+              if (err) {
+                console.error("SPORT UPDATE ERROR:", err);
+              }
+            }
+          );
+        }
+
+        // SEASON
+        if (season) {
+          db.query(
+            "INSERT INTO tblseason (BitID, SeasonID) VALUES (?, ?)",
+            [bitID, season],
+            (err) => {
+              if (err) {
+                console.error("SEASON UPDATE ERROR:", err);
+              }
+            }
+          );
+        }
+
+        // KEYWORDS
+        if (keywords && keywords.trim() !== "") {
+          db.query(
+            "INSERT INTO tblkeywords (BitID, Keywords) VALUES (?, ?)",
+            [bitID, keywords],
+            (err) => {
+              if (err) {
+                console.error("KEYWORDS UPDATE ERROR:", err);
+              }
+            }
+          );
+        }
+
+        // ------------------------------------------
+        // UNLIMITED HYPERLINKS
+        // ------------------------------------------
+
+        if (Array.isArray(hyperlinks)) {
+          hyperlinks
+            .filter(
+              (link) =>
+                link &&
+                typeof link === "string" &&
+                link.trim() !== ""
+            )
+            .forEach((link) => {
+              db.query(
+                "INSERT INTO tblhyperlink (BitID, Hyperlink) VALUES (?, ?)",
+                [bitID, link.trim()],
+                (err) => {
+                  if (err) {
+                    console.error(
+                      "HYPERLINK UPDATE ERROR:",
+                      err
+                    );
+                  }
+                }
+              );
+            });
+        }
+
+        // ------------------------------------------
+        // UNLIMITED ALBUMS / TRACKS
+        // ------------------------------------------
+
+        if (Array.isArray(albums)) {
+          albums
+            .filter((album) => album && album.albumID)
+            .forEach((album) => {
+              db.query(
+                `
+                INSERT INTO tblalbum
+                (BitID, AlbumID, Album_Track)
+                VALUES (?, ?, ?)
+                `,
+                [
+                  bitID,
+                  album.albumID,
+                  album.track || null
+                ],
+                (err) => {
+                  if (err) {
+                    console.error(
+                      "ALBUM UPDATE ERROR:",
+                      err
+                    );
+                  }
+                }
+              );
+            });
+        }
+
+        // ------------------------------------------
+        // Done
+        // ------------------------------------------
+
+        res.json({
+          message: "Bit updated successfully",
+          bitID
+        });
+      };
     }
-    res.json({ message: "Bit updated successfully" });
-  });
+  );
 });
+
 
 // Artist routes
 app.post("/api/insert/artist/", (req, res) => {
@@ -859,6 +1118,269 @@ app.post("/api/delete/artist", (req, res) => {
     res.json({ message: "Artist deleted" });
   });
 });
+
+
+// ==========================================
+// GET COMPLETE BIT INFORMATION
+// ==========================================
+app.get("/api/get/bit/full/:bitID", async (req, res) => {
+  const bitID = req.params.bitID;
+
+  if (!bitID) {
+    return res.status(400).json({
+      error: "bitID is required"
+    });
+  }
+
+  try {
+    // ------------------------------------------
+    // Main bit
+    // ------------------------------------------
+
+    const bit = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT
+          b.BitID,
+          b.Title,
+          b.ProphetNum,
+          b.AirDate,
+          b.Time,
+          b.Type,
+          b.ArtistID
+        FROM tblbits b
+        WHERE b.BitID = ?
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result[0]);
+        }
+      );
+    });
+
+    if (!bit) {
+      return res.status(404).json({
+        error: "Bit not found"
+      });
+    }
+
+    // ------------------------------------------
+    // Category
+    // ------------------------------------------
+
+    const category = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT CatID
+        FROM tblcategory
+        WHERE BitID = ?
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result[0]?.CatID || "");
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Subjects
+    // ------------------------------------------
+
+    const subjects = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT SubID
+        FROM tblsubject
+        WHERE BitID = ?
+        ORDER BY SubID
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result.map(row => row.SubID));
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Celebrities
+    // ------------------------------------------
+
+    const celebrities = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT Celeb1_ID, Celeb2_ID
+        FROM tblceleb
+        WHERE BitID = ?
+        LIMIT 1
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else {
+            resolve({
+              celebrity1: result[0]?.Celeb1_ID || "",
+              celebrity2: result[0]?.Celeb2_ID || ""
+            });
+          }
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Sport
+    // ------------------------------------------
+
+    const sport = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT SportID
+        FROM tblsports
+        WHERE BitID = ?
+        LIMIT 1
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result[0]?.SportID || "");
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Season
+    // ------------------------------------------
+
+    const season = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT SeasonID
+        FROM tblseason
+        WHERE BitID = ?
+        LIMIT 1
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result[0]?.SeasonID || "");
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Keywords
+    // ------------------------------------------
+
+    const keywords = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT Keywords
+        FROM tblkeywords
+        WHERE BitID = ?
+        LIMIT 1
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result[0]?.Keywords || "");
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Hyperlinks
+    // ------------------------------------------
+
+    const hyperlinks = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT Hyperlink
+        FROM tblhyperlink
+        WHERE BitID = ?
+        ORDER BY Hyperlink
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result.map(row => row.Hyperlink));
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Albums
+    // ------------------------------------------
+
+    const albums = await new Promise((resolve, reject) => {
+      db.query(
+        `
+        SELECT
+          AlbumID,
+          Album_Track
+        FROM tblalbum
+        WHERE BitID = ?
+        ORDER BY AlbumID
+        `,
+        [bitID],
+        (err, result) => {
+          if (err) reject(err);
+          else {
+            resolve(
+              result.map(row => ({
+                albumID: row.AlbumID,
+                track: row.Album_Track || ""
+              }))
+            );
+          }
+        }
+      );
+    });
+
+    // ------------------------------------------
+    // Return everything
+    // ------------------------------------------
+
+    res.json({
+      bitID: bit.BitID,
+      type: bit.Type || "",
+      title: bit.Title || "",
+      date: bit.AirDate || "",
+      time: bit.Time || "",
+      autoNum: bit.ProphetNum || "",
+
+      category: category,
+      artist: bit.ArtistID || "",
+
+      sub1: subjects[0] || "",
+      sub2: subjects[1] || "",
+      sub3: subjects[2] || "",
+      sub4: subjects[3] || "",
+
+      celebrity1: celebrities.celebrity1,
+      celebrity2: celebrities.celebrity2,
+
+      sport: sport,
+      season: season,
+
+      keywords: keywords,
+
+      hyperlinks: hyperlinks,
+
+      albums: albums
+    });
+
+  } catch (err) {
+    console.error("FULL BIT GET ERROR:", err);
+
+    res.status(500).json({
+      error: "Failed to retrieve complete bit information",
+      details: err.message
+    });
+  }
+});
+
 
 
 // Get celebrity list
