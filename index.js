@@ -1465,157 +1465,6 @@ app.get("/api/auth/check", (req, res) => {
 });
 
 // ============================================================
-// BIT SEARCH
-// ============================================================
-
-app.get(
-  "/api/get/:searchBitID/:searchKeyword/:searchType",
-
-  (req, res) => {
-
-    const {
-
-      searchKeyword,
-
-      searchBitID,
-
-      searchType
-
-    } = req.params;
-
-    let sql;
-    let params;
-
-    // ========================================================
-    // KEYWORD
-    // ========================================================
-
-    if (searchType === "Keyword") {
-
-      sql = `
-        SELECT
-          bits.BitID,
-          bits.Title,
-          artist.Name,
-          bits.ProphetNum,
-          bits.Time,
-          bits.Type
-
-        FROM tblbits bits
-
-        LEFT JOIN tblartist artist
-          ON bits.ArtistID = artist.ArtistID
-
-        WHERE LOCATE(?, bits.Title) > 0
-
-        ORDER BY bits.BitID DESC
-      `;
-
-      params = [
-        searchKeyword
-      ];
-
-    }
-
-    // ========================================================
-    // BIT ID
-    // ========================================================
-
-    else if (searchType === "Bit ID") {
-
-      sql = `
-        SELECT
-          bits.BitID,
-          bits.Title,
-          artist.Name,
-          bits.ProphetNum,
-          bits.Time,
-          bits.Type
-
-        FROM tblbits bits
-
-        LEFT JOIN tblartist artist
-          ON bits.ArtistID = artist.ArtistID
-
-        WHERE bits.BitID = ?
-      `;
-
-      params = [
-        searchBitID
-      ];
-
-    }
-
-    // ========================================================
-    // ARTIST
-    // ========================================================
-
-    else if (searchType === "Artist") {
-
-      sql = `
-        SELECT
-          bits.BitID,
-          bits.Title,
-          artist.Name,
-          bits.ProphetNum,
-          bits.Time,
-          bits.Type
-
-        FROM tblbits bits
-
-        LEFT JOIN tblartist artist
-          ON bits.ArtistID = artist.ArtistID
-
-        WHERE LOCATE(?, artist.Name) > 0
-
-        ORDER BY bits.BitID DESC
-      `;
-
-      params = [
-        searchKeyword
-      ];
-
-    }
-
-    else {
-
-      return res.status(400).json({
-        error:
-          "Invalid search type"
-      });
-
-    }
-
-    db.query(
-      sql,
-      params,
-
-      (err, result) => {
-
-        if (err) {
-
-          console.error(
-            "BIT SEARCH ERROR:",
-            err
-          );
-
-          return res.status(500).json({
-            error:
-              "Database error"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
 // GET BIT FOR EDIT
 // ============================================================
 
@@ -1896,6 +1745,159 @@ app.get(
 
   }
 );
+
+
+// ============================================================
+// BIT SEARCH
+// ============================================================
+
+app.get(
+  "/api/get/:searchBitID/:searchKeyword/:searchType",
+
+  (req, res) => {
+
+    const {
+
+      searchKeyword,
+
+      searchBitID,
+
+      searchType
+
+    } = req.params;
+
+    let sql;
+    let params;
+
+    // ========================================================
+    // KEYWORD
+    // ========================================================
+
+    if (searchType === "Keyword") {
+
+      sql = `
+        SELECT
+          bits.BitID,
+          bits.Title,
+          artist.Name,
+          bits.ProphetNum,
+          bits.Time,
+          bits.Type
+
+        FROM tblbits bits
+
+        LEFT JOIN tblartist artist
+          ON bits.ArtistID = artist.ArtistID
+
+        WHERE LOCATE(?, bits.Title) > 0
+
+        ORDER BY bits.BitID DESC
+      `;
+
+      params = [
+        searchKeyword
+      ];
+
+    }
+
+    // ========================================================
+    // BIT ID
+    // ========================================================
+
+    else if (searchType === "Bit ID") {
+
+      sql = `
+        SELECT
+          bits.BitID,
+          bits.Title,
+          artist.Name,
+          bits.ProphetNum,
+          bits.Time,
+          bits.Type
+
+        FROM tblbits bits
+
+        LEFT JOIN tblartist artist
+          ON bits.ArtistID = artist.ArtistID
+
+        WHERE bits.BitID = ?
+      `;
+
+      params = [
+        searchBitID
+      ];
+
+    }
+
+    // ========================================================
+    // ARTIST
+    // ========================================================
+
+    else if (searchType === "Artist") {
+
+      sql = `
+        SELECT
+          bits.BitID,
+          bits.Title,
+          artist.Name,
+          bits.ProphetNum,
+          bits.Time,
+          bits.Type
+
+        FROM tblbits bits
+
+        LEFT JOIN tblartist artist
+          ON bits.ArtistID = artist.ArtistID
+
+        WHERE LOCATE(?, artist.Name) > 0
+
+        ORDER BY bits.BitID DESC
+      `;
+
+      params = [
+        searchKeyword
+      ];
+
+    }
+
+    else {
+
+      return res.status(400).json({
+        error:
+          "Invalid search type"
+      });
+
+    }
+
+    db.query(
+      sql,
+      params,
+
+      (err, result) => {
+
+        if (err) {
+
+          console.error(
+            "BIT SEARCH ERROR:",
+            err
+          );
+
+          return res.status(500).json({
+            error:
+              "Database error"
+          });
+
+        }
+
+        res.json(result);
+
+      }
+
+    );
+
+  }
+);
+
 
 // ============================================================
 // GET COMPLETE BIT INFORMATION
