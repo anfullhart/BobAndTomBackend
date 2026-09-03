@@ -1672,6 +1672,7 @@ app.post("/api/delete/artist", (req, res) => {
 
 // ==========================================
 // GET COMPLETE BIT INFORMATION
+// Uses new ttbl relationship tables
 // ==========================================
 app.get("/api/get/bit/full/:bitID", async (req, res) => {
   const bitID = req.params.bitID;
@@ -1682,255 +1683,285 @@ app.get("/api/get/bit/full/:bitID", async (req, res) => {
     });
   }
 
-  try {
-    // ------------------------------------------
-    // Main bit
-    // ------------------------------------------
-
-    const bit = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT
-          b.BitID,
-          b.Title,
-          b.ProphetNum,
-          b.AirDate,
-          b.Time,
-          b.Type,
-          b.ArtistID
-        FROM tblbits b
-        WHERE b.BitID = ?
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result[0]);
+  const query = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.query(sql, params, (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
         }
-      );
+      });
     });
+  };
 
-    if (!bit) {
+  try {
+
+    // ==========================================
+    // MAIN BIT INFORMATION
+    // ==========================================
+
+    const bitResult = await query(
+      `
+      SELECT
+        b.BitID,
+        b.Title,
+        b.ProphetNum,
+        b.AirDate,
+        b.Time,
+        b.Type,
+        b.ArtistID,
+        a.Name AS ArtistName
+      FROM tblbits b
+      LEFT JOIN tblartist a
+        ON b.ArtistID = a.ArtistID
+      WHERE b.BitID = ?
+      `,
+      [bitID]
+    );
+
+    if (bitResult.length === 0) {
       return res.status(404).json({
         error: "Bit not found"
       });
     }
 
-    // ------------------------------------------
-    // Category
-    // ------------------------------------------
+    const bit = bitResult[0];
 
-    const category = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT CatID
-        FROM tblcategory
-        WHERE BitID = ?
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result[0]?.CatID || "");
-        }
-      );
-    });
 
-    // ------------------------------------------
-    // Subjects
-    // ------------------------------------------
+    // ==========================================
+    // CATEGORIES
+    // ==========================================
 
-    const subjects = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT SubID
-        FROM tblsubject
-        WHERE BitID = ?
-        ORDER BY SubID
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result.map(row => row.SubID));
-        }
-      );
-    });
+    const categories = await query(
+      `
+      SELECT
+        c.CatID,
+        ck.Category
+      FROM ttblcategory c
+      LEFT JOIN tblcatkey ck
+        ON c.CatID = ck.CatID
+      WHERE c.BitID = ?
+      ORDER BY ck.Category
+      `,
+      [bitID]
+    );
 
-    // ------------------------------------------
-    // Celebrities
-    // ------------------------------------------
 
-    const celebrities = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT Celeb1_ID, Celeb2_ID
-        FROM tblceleb
-        WHERE BitID = ?
-        LIMIT 1
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else {
-            resolve({
-              celebrity1: result[0]?.Celeb1_ID || "",
-              celebrity2: result[0]?.Celeb2_ID || ""
-            });
-          }
-        }
-      );
-    });
+    // ==========================================
+    // SUBJECTS
+    // ==========================================
 
-    // ------------------------------------------
-    // Sport
-    // ------------------------------------------
+    const subjects = await query(
+      `
+      SELECT
+        s.SubID,
+        sk.Subject
+      FROM ttblsubject s
+      LEFT JOIN tblsubjectkey sk
+        ON s.SubID = sk.SubID
+      WHERE s.BitID = ?
+      ORDER BY sk.Subject
+      `,
+      [bitID]
+    );
 
-    const sport = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT SportID
-        FROM tblsports
-        WHERE BitID = ?
-        LIMIT 1
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result[0]?.SportID || "");
-        }
-      );
-    });
 
-    // ------------------------------------------
-    // Season
-    // ------------------------------------------
+    // ==========================================
+    // CELEBRITIES
+    // ==========================================
 
-    const season = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT SeasonID
-        FROM tblseason
-        WHERE BitID = ?
-        LIMIT 1
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result[0]?.SeasonID || "");
-        }
-      );
-    });
+    const celebrities = await query(
+      `
+      SELECT
+        c.CelebID,
+        ck.Name
+      FROM ttblceleb c
+      LEFT JOIN tblcelebkey ck
+        ON c.CelebID = ck.CelebID
+      WHERE c.BitID = ?
+      ORDER BY ck.Name
+      `,
+      [bitID]
+    );
 
-    // ------------------------------------------
-    // Keywords
-    // ------------------------------------------
 
-    const keywords = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT Keywords
-        FROM tblkeywords
-        WHERE BitID = ?
-        LIMIT 1
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result[0]?.Keywords || "");
-        }
-      );
-    });
+    // ==========================================
+    // SPORTS
+    // ==========================================
 
-    // ------------------------------------------
-    // Hyperlinks
-    // ------------------------------------------
+    const sports = await query(
+      `
+      SELECT
+        s.SportID,
+        sk.Sport
+      FROM ttblsports s
+      LEFT JOIN tblsportskey sk
+        ON s.SportID = sk.SportID
+      WHERE s.BitID = ?
+      ORDER BY sk.Sport
+      `,
+      [bitID]
+    );
 
-    const hyperlinks = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT Hyperlink
-        FROM tblhyperlink
-        WHERE BitID = ?
-        ORDER BY Hyperlink
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result.map(row => row.Hyperlink));
-        }
-      );
-    });
 
-    // ------------------------------------------
-    // Albums
-    // ------------------------------------------
+    // ==========================================
+    // SEASONS
+    // ==========================================
 
-    const albums = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT
-          AlbumID,
-          Album_Track
-        FROM tblalbum
-        WHERE BitID = ?
-        ORDER BY AlbumID
-        `,
-        [bitID],
-        (err, result) => {
-          if (err) reject(err);
-          else {
-            resolve(
-              result.map(row => ({
-                albumID: row.AlbumID,
-                track: row.Album_Track || ""
-              }))
-            );
-          }
-        }
-      );
-    });
+    const seasons = await query(
+      `
+      SELECT
+        s.SeasonID,
+        sk.Season
+      FROM ttblseason s
+      LEFT JOIN tblseasonkey sk
+        ON s.SeasonID = sk.SeasonID
+      WHERE s.BitID = ?
+      ORDER BY sk.sorder, sk.Season
+      `,
+      [bitID]
+    );
 
-    // ------------------------------------------
-    // Return everything
-    // ------------------------------------------
+
+    // ==========================================
+    // KEYWORDS
+    // ==========================================
+
+    const keywords = await query(
+      `
+      SELECT
+        KeywordID,
+        Keywords
+      FROM ttblkeywords
+      WHERE BitID = ?
+      ORDER BY KeywordID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // HYPERLINKS
+    // ==========================================
+
+    const hyperlinks = await query(
+      `
+      SELECT
+        LinkID,
+        Hyperlink
+      FROM ttblhyperlink
+      WHERE BitID = ?
+      ORDER BY LinkID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // ALBUMS
+    // ==========================================
+
+    const albums = await query(
+      `
+      SELECT
+        a.AlbumID,
+        ak.Album_Name,
+        a.Album_Track
+      FROM ttblalbum a
+      LEFT JOIN tblalbumkey ak
+        ON a.AlbumID = ak.AlbumID
+      WHERE a.BitID = ?
+      ORDER BY ak.Album_Name, a.Album_Track
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // RETURN COMPLETE BIT
+    // ==========================================
 
     res.json({
+
+      // Main information
       bitID: bit.BitID,
-      type: bit.Type || "",
       title: bit.Title || "",
-      date: bit.AirDate || "",
+      type: bit.Type || "",
+      artist: bit.ArtistID || "",
+      artistName: bit.ArtistName || "",
+      date: bit.AirDate
+        ? new Date(bit.AirDate).toISOString().split("T")[0]
+        : "",
       time: bit.Time || "",
       autoNum: bit.ProphetNum || "",
 
-      category: category,
-      artist: bit.ArtistID || "",
 
-      sub1: subjects[0] || "",
-      sub2: subjects[1] || "",
-      sub3: subjects[2] || "",
-      sub4: subjects[3] || "",
+      // Categories
+      categories: categories.map(row => ({
+        id: row.CatID,
+        name: row.Category
+      })),
 
-      celebrity1: celebrities.celebrity1,
-      celebrity2: celebrities.celebrity2,
 
-      sport: sport,
-      season: season,
+      // Subjects
+      subjects: subjects.map(row => ({
+        id: row.SubID,
+        name: row.Subject
+      })),
 
-      keywords: keywords,
 
-      hyperlinks: hyperlinks,
+      // Celebrities
+      celebrities: celebrities.map(row => ({
+        id: row.CelebID,
+        name: row.Name
+      })),
 
-      albums: albums
+
+      // Sports
+      sports: sports.map(row => ({
+        id: row.SportID,
+        name: row.Sport
+      })),
+
+
+      // Seasons
+      seasons: seasons.map(row => ({
+        id: row.SeasonID,
+        name: row.Season
+      })),
+
+
+      // Keywords
+      keywords: keywords.map(row => row.Keywords),
+
+
+      // Hyperlinks
+      hyperlinks: hyperlinks.map(row => row.Hyperlink),
+
+
+      // Albums
+      albums: albums.map(row => ({
+        id: row.AlbumID,
+        name: row.Album_Name,
+        track: row.Album_Track || ""
+      }))
+
     });
 
   } catch (err) {
-    console.error("FULL BIT GET ERROR:", err);
 
-    res.status(500).json({
+    console.error("FULL BIT GET ERROR:");
+    console.error(err);
+
+    return res.status(500).json({
       error: "Failed to retrieve complete bit information",
-      details: err.message
+      details: err.message,
+      sqlMessage: err.sqlMessage || null,
+      code: err.code || null
     });
   }
 });
-
 
 
 // Get celebrity list
