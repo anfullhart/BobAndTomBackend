@@ -1,42 +1,32 @@
 require("dotenv").config();
-
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const mysql = require("mysql2");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
-
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; 
 
 const app = express();
-
 app.set("trust proxy", 1);
 
-// ============================================================
-// DATABASE CONNECTION
-// ============================================================
-
+// Database connection
 const dbPool = mysql.createPool({
   host: process.env.MYSQLHOST || "tramway.proxy.rlwy.net",
   user: process.env.MYSQLUSER || "root",
-  password: process.env.MYSQLPASSWORD,
+  password: process.env.MYSQLPASSWORD || "RfGgOCaxAMOdgcuSEEDVgYTgnzRvzDDK",
   database: process.env.MYSQLDATABASE || "railway",
   port: process.env.MYSQLPORT || 52386,
-
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
 const db = dbPool;
-
 const sessionStore = new MySQLStore({}, dbPool);
 
-// ============================================================
-// MIDDLEWARE
-// ============================================================
 
+// Middleware
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN || "http://localhost:3000",
@@ -46,3638 +36,2130 @@ app.use(
 
 app.use(
   session({
-    secret:
-      process.env.SESSION_SECRET ||
-      "bits_fallback_secure_string_secret",
-
-    store: sessionStore,
-
+    secret: process.env.SESSION_SECRET || "bits_fallback_secure_string_secret", // Fixed deprecation warning
+    store: sessionStore, // Fixed production MemoryStore leak warning
     resave: false,
-
     saveUninitialized: false,
-
     key: "bits_session_id",
-
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production", // Uses secure cookies automatically on Railway
       httpOnly: true,
-
-      sameSite:
-        process.env.NODE_ENV === "production"
-          ? "none"
-          : "lax"
-    }
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+    },
   })
 );
 
 app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use(
-  bodyParser.urlencoded({
-    extended: true
-  })
-);
-
-// ============================================================
-// DATABASE PROMISE HELPER
-// ============================================================
-
-const query = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.query(sql, params, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result);
-      }
-    });
-  });
-};
-
-// ============================================================
-// AUTH MIDDLEWARE
-// ============================================================
-
+// Auth middleware
 const isAuthenticated = (req, res, next) => {
   if (req.session.user) {
     next();
   } else {
-    res.status(401).json({
-      error: "Unauthorized"
-    });
+    res.status(401).json({ error: "Unauthorized" });
   }
 };
 
 const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
-
     if (!req.session.user) {
-      return res.status(401).json({
-        error: "Unauthorized"
-      });
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const userRole = req.session.user.role;
 
     if (!allowedRoles.includes(userRole)) {
-      return res.status(403).json({
-        error: "Forbidden: Insufficient role"
-      });
+      return res.status(403).json({ error: "Forbidden: Insufficient role" });
     }
 
     next();
   };
 };
 
-// ============================================================
-// HEALTH CHECK
-// ============================================================
-
+// Health check endpoint
 app.get("/", (req, res) => {
-  res.json({
-    message: "Server is running"
-  });
+  res.json({ message: "Server is running" });
 });
 
-// ============================================================
-// ADMIN DASHBOARD
-// ============================================================
-
-app.get(
-  "/api/admin/dashboard",
-
+app.get("/api/admin/dashboard",
   isAuthenticated,
-
   requireRole("admin", "owner"),
-
   (req, res) => {
-
     res.json({
       message: "Welcome to the admin dashboard",
       user: req.session.user
     });
-
   }
 );
 
-// ============================================================
-// DELETE BIT
-// ============================================================
+// Delete bit
+app.post("/api/delete/bit", (req, res) => {
+  const bitID = req.body.bitID;
 
-app.post(
-  "/api/delete/bit",
+  const deleteBit = "DELETE FROM tblbits WHERE BitID = ?";
+  db.query(deleteBit, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
-  async (req, res) => {
+  const deleteAlbum = "DELETE FROM tblalbum WHERE BitID = ?";
+  db.query(deleteAlbum, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
-    const bitID = req.body.bitID;
+  const deleteCategory = "DELETE FROM tblcategory WHERE BitID = ?";
+  db.query(deleteCategory, [bitID], (err) => {
+    if (err) console.log(err);
+  });
 
-    if (!bitID) {
-      return res.status(400).json({
-        error: "BitID is required"
-      });
+  const deleteCelebrity = "DELETE FROM tblceleb WHERE BitID = ?";
+  db.query(deleteCelebrity, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
+  const deleteHyperlink = "DELETE FROM tblhyperlink WHERE BitID = ?";
+  db.query(deleteHyperlink, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
+  const deleteKeywords = "DELETE FROM tblkeywords WHERE BitID = ?";
+  db.query(deleteKeywords, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
+  const deleteSeason = "DELETE FROM tblseason WHERE BitID = ?";
+  db.query(deleteSeason, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
+  const deleteSport = "DELETE FROM tblsports WHERE BitID = ?";
+  db.query(deleteSport, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
+  const deleteSubject = "DELETE FROM tblsubject WHERE BitID = ?";
+  db.query(deleteSubject, [bitID], (err) => {
+    if (err) console.log(err);
+  });
+
+  res.json({ message: "Bit deleted" });
+});
+
+// Delete log
+app.post("/api/delete/log", (req, res) => {
+  const RS_ID = req.body.RS_ID;
+
+  const deleteLog = "DELETE e, k, d FROM tblrunentries e JOIN tblrunkey k ON e.L_ID = k.L_ID JOIN tblrunsheetdate d ON k.RS_ID = d.RS_ID WHERE k.RS_ID = ?";
+  db.query(deleteLog, [RS_ID], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Failed to delete log" });
     }
+    res.json({ message: "Log deleted" });
+  });
+});
 
-    try {
+// Edit run sheet
+app.post("/api/edit/runSheet", (req, res) => {
+  const { RS_ID, logDate, data, deletedRows } = req.body;
 
-      // Delete relationship records first
-
-      await query(
-        "DELETE FROM ttblalbum WHERE BitID = ?",
-        [bitID]
-      );
-
-      await query(
-        "DELETE FROM ttblcategory WHERE BitID = ?",
-        [bitID]
-      );
-
-      await query(
-        "DELETE FROM ttblceleb WHERE BitID = ?",
-        [bitID]
-      );
-
-      await query(
-        "DELETE FROM ttblhyperlink WHERE BitID = ?",
-        [bitID]
-      );
-
-      await query(
-        "DELETE FROM ttblkeywords WHERE BitID = ?",
-        [bitID]
-      );
-
-      await query(
-        "DELETE FROM ttblseason WHERE BitID = ?",
-        [bitID]
-      );
-
-      await query(
-        "DELETE FROM ttblsports WHERE BitID = ?",
-        [bitID]
-      );
-
-      await query(
-        "DELETE FROM ttblsubject WHERE BitID = ?",
-        [bitID]
-      );
-
-      // Delete main bit
-
-      await query(
-        "DELETE FROM tblbits WHERE BitID = ?",
-        [bitID]
-      );
-
-      res.json({
-        message: "Bit deleted successfully"
-      });
-
-    } catch (err) {
-
-      console.error(
-        "DELETE BIT ERROR:",
-        err
-      );
-
-      res.status(500).json({
-        error: "Failed to delete bit",
-        details: err.message
-      });
-
-    }
-
+  if (!RS_ID || !Array.isArray(data)) {
+    return res.status(400).json({ error: "Invalid payload" });
   }
-);
 
-// ============================================================
-// DELETE LOG
-// ============================================================
+  if (Array.isArray(deletedRows) && deletedRows.length > 0) {
+    const deleteSql = `DELETE FROM tblrunentries WHERE L_ID IN (?)`;
+    db.query(deleteSql, [deletedRows], (err) => {
+      if (err) console.error("Failed to delete rows:", err);
+    });
+  }
 
-app.post(
-  "/api/delete/log",
+  const updateDateSql = `UPDATE tblrunsheetdate SET RSDate = ? WHERE RS_ID = ?`;
 
-  (req, res) => {
+  db.query(updateDateSql, [logDate, RS_ID], (err) => {
+    if (err) {
+      console.error("Date update failed:", err);
+      return res.status(500).json({ error: "Failed to update date" });
+    }
 
-    const RS_ID = req.body.RS_ID;
-
-    const deleteLog = `
-      DELETE e, k, d
-      FROM tblrunentries e
-      JOIN tblrunkey k
-        ON e.L_ID = k.L_ID
-      JOIN tblrunsheetdate d
-        ON k.RS_ID = d.RS_ID
-      WHERE k.RS_ID = ?
-    `;
-
-    db.query(
-      deleteLog,
-      [RS_ID],
-
-      (err) => {
-
-        if (err) {
-
-          console.error(err);
-
-          return res.status(500).json({
-            error: "Failed to delete log"
-          });
-
-        }
-
-        res.json({
-          message: "Log deleted"
-        });
-
-      }
+    const rowsToUpdate = data.filter((row) => row.L_ID);
+    const rowsToInsert = data.filter(
+      (row) => !row.L_ID && (row.bTime || row.bitDesc || row.ArtistID)
     );
 
+    const updatePromises = rowsToUpdate.map((row) => {
+      return new Promise((resolve, reject) => {
+        const updateSql = `UPDATE tblrunentries SET bTime = ?, bitDesc = ?, ArtistID = ? WHERE L_ID = ?`;
+        db.query(updateSql, [row.bTime, row.bitDesc, row.ArtistID, row.L_ID], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    });
+
+    const insertPromises = rowsToInsert.map((row) => {
+      return new Promise((resolve, reject) => {
+        const insertKeySql = `INSERT INTO tblrunkey (RS_ID) VALUES (?)`;
+        db.query(insertKeySql, [RS_ID], (err, keyResult) => {
+          if (err) return reject(err);
+
+          const newL_ID = keyResult.insertId;
+          const insertEntrySql = `INSERT INTO tblrunentries (L_ID, bTime, bitDesc, ArtistID) VALUES (?, ?, ?, ?)`;
+          db.query(insertEntrySql, [newL_ID, row.bTime, row.bitDesc, row.ArtistID], (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      });
+    });
+
+    Promise.all([...updatePromises, ...insertPromises])
+      .then(() => {
+        res.json({ message: "Run sheet updated successfully" });
+      })
+      .catch((err) => {
+        console.error("Update/Insert failed:", err);
+        res.status(500).json({ error: "Failed to update run sheet" });
+      });
+  });
+});
+
+// Insert run sheet
+app.post("/api/insert/runSheet", (req, res) => {
+  const { logDate, rows } = req.body;
+
+  if (!logDate) {
+    return res.status(400).send("logDate is required");
   }
-);
 
-// ============================================================
-// EDIT RUN SHEET
-// ============================================================
-
-app.post(
-  "/api/edit/runSheet",
-
-  async (req, res) => {
-
-    const {
-      RS_ID,
-      logDate,
-      data,
-      deletedRows
-    } = req.body;
-
-    if (!RS_ID || !Array.isArray(data)) {
-
-      return res.status(400).json({
-        error: "Invalid payload"
-      });
-
-    }
-
-    try {
-
-      // Delete removed rows
-
-      if (
-        Array.isArray(deletedRows) &&
-        deletedRows.length > 0
-      ) {
-
-        await query(
-          `
-          DELETE FROM tblrunentries
-          WHERE L_ID IN (?)
-          `,
-          [deletedRows]
-        );
-
-      }
-
-      // Update date
-
-      await query(
-        `
-        UPDATE tblrunsheetdate
-        SET RSDate = ?
-        WHERE RS_ID = ?
-        `,
-        [logDate, RS_ID]
-      );
-
-      const rowsToUpdate =
-        data.filter(row => row.L_ID);
-
-      const rowsToInsert =
-        data.filter(
-          row =>
-            !row.L_ID &&
-            (
-              row.bTime ||
-              row.bitDesc ||
-              row.ArtistID
-            )
-        );
-
-      // Update existing rows
-
-      for (const row of rowsToUpdate) {
-
-        await query(
-          `
-          UPDATE tblrunentries
-          SET
-            bTime = ?,
-            bitDesc = ?,
-            ArtistID = ?
-          WHERE L_ID = ?
-          `,
-          [
-            row.bTime,
-            row.bitDesc,
-            row.ArtistID,
-            row.L_ID
-          ]
-        );
-
-      }
-
-      // Insert new rows
-
-      for (const row of rowsToInsert) {
-
-        const keyResult =
-          await query(
-            `
-            INSERT INTO tblrunkey (RS_ID)
-            VALUES (?)
-            `,
-            [RS_ID]
-          );
-
-        const newL_ID =
-          keyResult.insertId;
-
-        await query(
-          `
-          INSERT INTO tblrunentries
-          (
-            L_ID,
-            bTime,
-            bitDesc,
-            ArtistID
-          )
-          VALUES (?, ?, ?, ?)
-          `,
-          [
-            newL_ID,
-            row.bTime,
-            row.bitDesc,
-            row.ArtistID
-          ]
-        );
-
-      }
-
-      res.json({
-        message:
-          "Run sheet updated successfully"
-      });
-
-    } catch (err) {
-
-      console.error(
-        "RUN SHEET UPDATE ERROR:",
-        err
-      );
-
-      res.status(500).json({
-        error:
-          "Failed to update run sheet"
-      });
-
-    }
-
+  if (!rows || !Array.isArray(rows) || rows.length === 0) {
+    return res.status(400).send("No rows provided");
   }
-);
 
-// ============================================================
-// INSERT RUN SHEET
-// ============================================================
+  const cleanedRows = rows
+    .map(r => ({
+      time: (r.time || "").trim(),
+      desc: (r.desc || "").trim(),
+      artist: r.artist || null,
+    }))
+    .filter(r => r.time || r.desc || r.artist);
 
-app.post(
-  "/api/insert/runSheet",
+  if (cleanedRows.length === 0) {
+    return res.status(400).send("All rows are empty");
+  }
 
-  async (req, res) => {
+  const values = cleanedRows.map(r => [r.time, r.desc, r.artist]);
 
-    const {
-      logDate,
-      rows
-    } = req.body;
-
-    if (!logDate) {
-
-      return res.status(400).send(
-        "logDate is required"
-      );
-
+  const insertEntriesSQL = "INSERT INTO tblrunentries (bTime, bitDesc, ArtistID) VALUES ?";
+  db.query(insertEntriesSQL, [values], (err, result) => {
+    if (err) {
+      console.error("Error inserting into tblrunentries:", err);
+      return res.status(500).send("Failed to insert run sheet entries");
     }
 
-    if (
-      !Array.isArray(rows) ||
-      rows.length === 0
-    ) {
-
-      return res.status(400).send(
-        "No rows provided"
-      );
-
+    const insertedIds = [];
+    for (let i = 0; i < values.length; i++) {
+      insertedIds.push(result.insertId + i);
     }
 
-    try {
-
-      const cleanedRows =
-        rows
-          .map(row => ({
-
-            time:
-              (row.time || "").trim(),
-
-            desc:
-              (row.desc || "").trim(),
-
-            artist:
-              row.artist || null
-
-          }))
-
-          .filter(
-            row =>
-              row.time ||
-              row.desc ||
-              row.artist
-          );
-
-      if (cleanedRows.length === 0) {
-
-        return res.status(400).send(
-          "All rows are empty"
-        );
-
+    const selectRS_SQL = "SELECT RS_ID FROM tblrunsheetdate WHERE RSDate = ? LIMIT 1";
+    db.query(selectRS_SQL, [logDate], (err, rsResult) => {
+      if (err) {
+        console.error("Error selecting RS_ID:", err);
+        return res.status(500).send("Failed to check run sheet date");
       }
 
-      // Find or create date
-
-      let rsResult =
-        await query(
-          `
-          SELECT RS_ID
-          FROM tblrunsheetdate
-          WHERE RSDate = ?
-          LIMIT 1
-          `,
-          [logDate]
-        );
-
-      let RS_ID;
+      const attachRowsToSheet = (rs_id) => {
+        const runKeyValues = insertedIds.map(id => [rs_id, id]);
+        const insertRunKeySQL = "INSERT INTO tblrunkey (RS_ID, L_ID) VALUES ?";
+        db.query(insertRunKeySQL, [runKeyValues], (err) => {
+          if (err) {
+            console.error("Error inserting into tblrunkey:", err);
+            return res.status(500).send("Failed to attach entries to run sheet");
+          }
+          return res.send({ message: "Run sheet saved successfully", RS_ID: rs_id });
+        });
+      };
 
       if (rsResult.length > 0) {
-
-        RS_ID =
-          rsResult[0].RS_ID;
-
+        attachRowsToSheet(rsResult[0].RS_ID);
       } else {
-
-        const insertDate =
-          await query(
-            `
-            INSERT INTO tblrunsheetdate
-            (RSDate)
-            VALUES (?)
-            `,
-            [logDate]
-          );
-
-        RS_ID =
-          insertDate.insertId;
-
+        const insertDateSQL = "INSERT INTO tblrunsheetdate (RSDate) VALUES (?)";
+        db.query(insertDateSQL, [logDate], (err, insertDateResult) => {
+          if (err) {
+            console.error("Error inserting new RSDate:", err);
+            return res.status(500).send("Failed to create new run sheet date");
+          }
+          attachRowsToSheet(insertDateResult.insertId);
+        });
       }
-
-      // Insert entries
-
-      for (const row of cleanedRows) {
-
-        const entryResult =
-          await query(
-            `
-            INSERT INTO tblrunentries
-            (
-              bTime,
-              bitDesc,
-              ArtistID
-            )
-            VALUES (?, ?, ?)
-            `,
-            [
-              row.time,
-              row.desc,
-              row.artist
-            ]
-          );
-
-        await query(
-          `
-          INSERT INTO tblrunkey
-          (
-            RS_ID,
-            L_ID
-          )
-          VALUES (?, ?)
-          `,
-          [
-            RS_ID,
-            entryResult.insertId
-          ]
-        );
-
-      }
-
-      res.json({
-        message:
-          "Run sheet saved successfully",
-
-        RS_ID
-      });
-
-    } catch (err) {
-
-      console.error(
-        "RUN SHEET INSERT ERROR:",
-        err
-      );
-
-      res.status(500).json({
-        error:
-          "Failed to insert run sheet"
-      });
-
-    }
-
-  }
-);
+    });
+  });
+});
 
 // ============================================================
 // INSERT COMPLETE BIT
 // ============================================================
-
-app.post(
-  "/api/insert/bit",
-
-  async (req, res) => {
-
-    const {
-
-      type,
-
-      title,
-
-      category,
-
-      categories = [],
-
-      artist,
-
-      date: airDate,
-
-      autoNum,
-
-      time,
-
-      subjects = [],
-
-      celebrities = [],
-
-      sport,
-
-      sports = [],
-
-      season,
-
-      seasons = [],
-
-      keywords,
-
-      hyperlinks = [],
-
-      albums = []
-
-    } = req.body;
-
-    try {
-
-      // ======================================================
-      // MAIN BIT
-      // ======================================================
-
-      const bitResult =
-        await query(
-
-          `
-          INSERT INTO tblbits
-          (
-            AirDate,
-            Title,
-            ArtistID,
-            ProphetNum,
-            Time,
-            Type
-          )
-          VALUES (?, ?, ?, ?, ?, ?)
-          `,
-
-          [
-
-            airDate || null,
-
-            title || null,
-
-            artist || null,
-
-            autoNum || null,
-
-            time || null,
-
-            type || null
-
-          ]
-
-        );
-
-      const bitID =
-        bitResult.insertId;
-
-      // ======================================================
-      // CATEGORIES
-      // ======================================================
-
-      let cleanCategories =
-        Array.isArray(categories)
-          ? [...new Set(categories.filter(Boolean))]
-          : [];
-
-      if (
-        cleanCategories.length === 0 &&
-        category
-      ) {
-
-        cleanCategories.push(category);
-
-      }
-
-      if (cleanCategories.length > 0) {
-
-        const values =
-          cleanCategories.map(
-            catID => [
-              bitID,
-              catID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblcategory
-          (
-            BitID,
-            CatID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // SUBJECTS
-      // ======================================================
-
-      const cleanSubjects =
-        Array.isArray(subjects)
-
-          ? [...new Set(
-              subjects.filter(Boolean)
-            )]
-
-          : [];
-
-      if (cleanSubjects.length > 0) {
-
-        const values =
-          cleanSubjects.map(
-            subID => [
-              bitID,
-              subID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblsubject
-          (
-            BitID,
-            SubID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // CELEBRITIES
-      // ======================================================
-
-      const cleanCelebrities =
-        Array.isArray(celebrities)
-
-          ? [...new Set(
-              celebrities.filter(Boolean)
-            )]
-
-          : [];
-
-      if (cleanCelebrities.length > 0) {
-
-        const values =
-          cleanCelebrities.map(
-            celebID => [
-              bitID,
-              celebID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblceleb
-          (
-            BitID,
-            CelebID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // SPORTS
-      // ======================================================
-
-      let cleanSports =
-        Array.isArray(sports)
-
-          ? [...new Set(
-              sports.filter(Boolean)
-            )]
-
-          : [];
-
-      if (
-        cleanSports.length === 0 &&
-        sport
-      ) {
-
-        cleanSports.push(sport);
-
-      }
-
-      if (cleanSports.length > 0) {
-
-        const values =
-          cleanSports.map(
-            sportID => [
-              bitID,
-              sportID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblsports
-          (
-            BitID,
-            SportID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // SEASONS
-      // ======================================================
-
-      let cleanSeasons =
-        Array.isArray(seasons)
-
-          ? [...new Set(
-              seasons.filter(Boolean)
-            )]
-
-          : [];
-
-      if (
-        cleanSeasons.length === 0 &&
-        season
-      ) {
-
-        cleanSeasons.push(season);
-
-      }
-
-      if (cleanSeasons.length > 0) {
-
-        const values =
-          cleanSeasons.map(
-            seasonID => [
-              bitID,
-              seasonID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblseason
-          (
-            BitID,
-            SeasonID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // KEYWORDS
-      // ======================================================
-
-      if (
-        keywords &&
-        String(keywords).trim() !== ""
-      ) {
-
-        await query(
-
-          `
-          INSERT INTO ttblkeywords
-          (
-            BitID,
-            Keywords
-          )
-          VALUES (?, ?)
-          `,
-
-          [
-            bitID,
-            String(keywords).trim()
-          ]
-
-        );
-
-      }
-
-      // ======================================================
-      // HYPERLINKS
-      // ======================================================
-
-      const cleanHyperlinks =
-        Array.isArray(hyperlinks)
-
-          ? hyperlinks
-              .filter(
-                link =>
-                  link &&
-                  String(link).trim() !== ""
-              )
-              .map(
-                link =>
-                  String(link).trim()
-              )
-
-          : [];
-
-      if (cleanHyperlinks.length > 0) {
-
-        const values =
-          cleanHyperlinks.map(
-            link => [
-              bitID,
-              link
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblhyperlink
-          (
-            BitID,
-            Hyperlink
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // ALBUMS
-      // ======================================================
-
-      const cleanAlbums =
-        Array.isArray(albums)
-
-          ? albums.filter(
-              album =>
-                album &&
-                album.album
-            )
-
-          : [];
-
-      if (cleanAlbums.length > 0) {
-
-        const values =
-          cleanAlbums.map(
-            album => [
-
-              bitID,
-
-              album.album,
-
-              album.track || null
-
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblalbum
-          (
-            BitID,
-            AlbumID,
-            Album_Track
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // SUCCESS
-      // ======================================================
-
-      res.status(200).json({
-
-        message:
-          "Bit inserted successfully",
-
-        bitID
-
+app.post("/api/insert/bit", async (req, res) => {
+  const {
+    type,
+    title,
+    category,
+    categories = [],
+    artist,
+    date: airDate,
+    autoNum,
+    time,
+
+    subjects = [],
+    celebrities = [],
+
+    sport,
+    sports = [],
+
+    season,
+    seasons = [],
+
+    keywords,
+    hyperlinks = [],
+    albums = []
+  } = req.body;
+
+  const query = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.query(sql, params, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
       });
+    });
+  };
 
-    } catch (err) {
+  try {
 
-      console.error(
-        "BIT INSERT ERROR:",
-        err
+    // ==========================================================
+    // 1. INSERT MAIN BIT
+    // ==========================================================
+
+    const bitResult = await query(
+      `
+      INSERT INTO tblbits
+      (
+        AirDate,
+        Title,
+        ArtistID,
+        ProphetNum,
+        Time,
+        Type
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      [
+        airDate || null,
+        title || null,
+        artist || null,
+        autoNum || null,
+        time || null,
+        type || null
+      ]
+    );
+
+    const bitID = bitResult.insertId;
+
+    console.log("Created BitID:", bitID);
+
+
+    // ==========================================================
+    // 2. CATEGORIES
+    // ==========================================================
+
+    let cleanCategories = [];
+
+    if (Array.isArray(categories)) {
+      cleanCategories = categories.filter(Boolean);
+    }
+
+    // Backwards compatibility with current frontend
+    if (cleanCategories.length === 0 && category) {
+      cleanCategories.push(category);
+    }
+
+    if (cleanCategories.length > 0) {
+
+      const values = cleanCategories.map(catID => [
+        bitID,
+        catID
+      ]);
+
+      await query(
+        `
+        INSERT INTO ttblcategory
+        (BitID, CatID)
+        VALUES ?
+        `,
+        [values]
       );
-
-      res.status(500).json({
-
-        error:
-          "Failed to insert bit",
-
-        details:
-          err.message,
-
-        sqlMessage:
-          err.sqlMessage || null,
-
-        code:
-          err.code || null
-
-      });
-
     }
 
+
+    // ==========================================================
+    // 3. SUBJECTS
+    // ==========================================================
+
+    const cleanSubjects = Array.isArray(subjects)
+      ? [...new Set(subjects.filter(Boolean))]
+      : [];
+
+    if (cleanSubjects.length > 0) {
+
+      const values = cleanSubjects.map(subID => [
+        bitID,
+        subID
+      ]);
+
+      await query(
+        `
+        INSERT INTO ttblsubject
+        (BitID, SubID)
+        VALUES ?
+        `,
+        [values]
+      );
+    }
+
+
+    // ==========================================================
+    // 4. CELEBRITIES
+    // ==========================================================
+
+    const cleanCelebrities = Array.isArray(celebrities)
+      ? [...new Set(celebrities.filter(Boolean))]
+      : [];
+
+    if (cleanCelebrities.length > 0) {
+
+      const values = cleanCelebrities.map(celebID => [
+        bitID,
+        celebID
+      ]);
+
+      await query(
+        `
+        INSERT INTO ttblceleb
+        (BitID, CelebID)
+        VALUES ?
+        `,
+        [values]
+      );
+    }
+
+
+    // ==========================================================
+    // 5. SPORTS
+    // ==========================================================
+
+    let cleanSports = Array.isArray(sports)
+      ? [...new Set(sports.filter(Boolean))]
+      : [];
+
+    // Backwards compatibility
+    if (cleanSports.length === 0 && sport) {
+      cleanSports.push(sport);
+    }
+
+    if (cleanSports.length > 0) {
+
+      const values = cleanSports.map(sportID => [
+        bitID,
+        sportID
+      ]);
+
+      await query(
+        `
+        INSERT INTO ttblsports
+        (BitID, SportID)
+        VALUES ?
+        `,
+        [values]
+      );
+    }
+
+
+    // ==========================================================
+    // 6. SEASONS
+    // ==========================================================
+
+    let cleanSeasons = Array.isArray(seasons)
+      ? [...new Set(seasons.filter(Boolean))]
+      : [];
+
+    // Backwards compatibility
+    if (cleanSeasons.length === 0 && season) {
+      cleanSeasons.push(season);
+    }
+
+    if (cleanSeasons.length > 0) {
+
+      const values = cleanSeasons.map(seasonID => [
+        bitID,
+        seasonID
+      ]);
+
+      await query(
+        `
+        INSERT INTO ttblseason
+        (BitID, SeasonID)
+        VALUES ?
+        `,
+        [values]
+      );
+    }
+
+
+    // ==========================================================
+    // 7. HYPERLINKS
+    // ==========================================================
+
+    const cleanHyperlinks = Array.isArray(hyperlinks)
+      ? hyperlinks
+          .filter(link => link && String(link).trim() !== "")
+          .map(link => String(link).trim())
+      : [];
+
+    if (cleanHyperlinks.length > 0) {
+
+      const values = cleanHyperlinks.map(link => [
+        bitID,
+        link
+      ]);
+
+      await query(
+        `
+        INSERT INTO ttblhyperlink
+        (BitID, Hyperlink)
+        VALUES ?
+        `,
+        [values]
+      );
+    }
+
+
+    // ==========================================================
+    // 8. ALBUMS
+    // ==========================================================
+
+    const cleanAlbums = Array.isArray(albums)
+      ? albums.filter(album =>
+          album &&
+          album.album !== undefined &&
+          album.album !== null &&
+          album.album !== ""
+        )
+      : [];
+
+    if (cleanAlbums.length > 0) {
+
+      const values = cleanAlbums.map(album => [
+        bitID,
+        album.album,
+        album.track || 0
+      ]);
+
+      await query(
+        `
+        INSERT INTO ttblalbum
+        (BitID, AlbumID, Album_Track)
+        VALUES ?
+        `,
+        [values]
+      );
+    }
+
+
+    // ==========================================================
+    // 9. KEYWORDS
+    // ==========================================================
+
+    if (keywords && String(keywords).trim() !== "") {
+
+      await query(
+        `
+        INSERT INTO ttblkeywords
+        (BitID, Keywords)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          String(keywords).trim()
+        ]
+      );
+    }
+
+
+    // ==========================================================
+    // SUCCESS
+    // ==========================================================
+
+    console.log(`BIT ${bitID} INSERTED SUCCESSFULLY`);
+
+    res.status(200).json({
+      message: "Bit inserted successfully",
+      bitID
+    });
+
+  } catch (err) {
+
+    console.error("BIT INSERT ERROR:", err);
+
+    res.status(500).json({
+      error: "Failed to insert bit",
+      details: err.message,
+      sqlMessage: err.sqlMessage || null,
+      code: err.code || null
+    });
   }
-);
+});
 
-// ============================================================
-// GET LOOKUP TABLES
-// ============================================================
+// Get run sheet
+app.get("/api/get/runSheet/:RS_ID", (req, res) => {
+  const RS_ID = req.params.RS_ID;
 
-app.get("/api/get/celebrity", (req, res) => {
+  const sql = `
+    SELECT 
+      rk.RS_ID,
+      rsd.RSDate,
+      e.L_ID,
+      e.bTime,
+      e.bitDesc,
+      e.ArtistID
+    FROM tblrunkey rk
+    JOIN tblrunentries e ON rk.L_ID = e.L_ID
+    JOIN tblrunsheetdate rsd ON rk.RS_ID = rsd.RS_ID
+    WHERE rk.RS_ID = ?
+    ORDER BY e.bTime ASC
+  `;
 
-  db.query(
-    "SELECT * FROM tblcelebkey ORDER BY Name ASC",
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
+  db.query(sql, [RS_ID], (err, result) => {
+    if (err) {
+      console.error("Error fetching run sheet:", err);
+      return res.status(500).json({ error: "Database error" });
     }
-  );
+    res.json(result);
+  });
+});
 
+// Get lookups
+app.get("/api/get/celebrity", (req, res) => {
+  const sqlSelect = "SELECT * FROM tblcelebkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
 });
 
 app.get("/api/get/subject", (req, res) => {
-
-  db.query(
-    "SELECT * FROM tblsubjectkey ORDER BY Subject ASC",
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
-    }
-  );
-
+  const sqlSelect = "SELECT * FROM tblsubjectkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
 });
 
 app.get("/api/get/artist", (req, res) => {
-
-  db.query(
-    "SELECT * FROM tblartist ORDER BY Name ASC",
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
-    }
-  );
-
+  const sqlSelect = "SELECT * FROM tblartist ORDER BY Name ASC;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
 });
 
 app.get("/api/get/category", (req, res) => {
-
-  db.query(
-    "SELECT * FROM tblcatkey ORDER BY Category ASC",
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
-    }
-  );
-
+  const sqlSelect = "SELECT * FROM tblcatkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
 });
 
 app.get("/api/get/sport", (req, res) => {
-
-  db.query(
-    "SELECT * FROM tblsportskey ORDER BY Sport ASC",
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
-    }
-  );
-
+  const sqlSelect = "SELECT * FROM tblsportskey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
 });
 
 app.get("/api/get/season", (req, res) => {
-
-  db.query(
-    "SELECT * FROM tblseasonkey ORDER BY sorder, Season",
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
-    }
-  );
-
+  const sqlSelect = "SELECT * FROM tblseasonkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
 });
 
 app.get("/api/get/album", (req, res) => {
-
-  db.query(
-    "SELECT * FROM tblalbumkey ORDER BY Album_Name ASC",
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
-    }
-  );
-
+  const sqlSelect = "SELECT * FROM tblalbumkey;";
+  db.query(sqlSelect, (err, result) => {
+    res.send(result);
+  });
 });
 
-// ============================================================
-// LOGIN
-// ============================================================
-
+// Auth routes
 app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+  const sql = "SELECT userid, role FROM tbllogin WHERE login = ? AND pass = ?";
 
-  const {
-    username,
-    password
-  } = req.body;
+  db.query(sql, [username, password], (err, result) => {
+    if (err) return res.status(500).send({ error: err });
 
-  const sql =
-    `
-    SELECT userid, role
-    FROM tbllogin
-    WHERE login = ?
-    AND pass = ?
-    `;
+    if (result.length > 0) {
+      req.session.user = {
+        userid: result[0].userid,
+        username,
+        role: result[0].role,
+      };
 
-  db.query(
-
-    sql,
-
-    [
-      username,
-      password
-    ],
-
-    (err, result) => {
-
-      if (err) {
-
-        return res.status(500).json({
-          error: err.message
-        });
-
-      }
-
-      if (result.length > 0) {
-
-        req.session.user = {
-
-          userid:
-            result[0].userid,
-
-          username,
-
-          role:
-            result[0].role
-
-        };
-
-        res.json({
-
-          authenticated: true,
-
-          role:
-            result[0].role
-
-        });
-
-      } else {
-
-        res.json({
-          authenticated: false
-        });
-
-      }
-
+      res.send({
+        authenticated: true,
+        role: result[0].role,
+      });
+    } else {
+      res.send({ authenticated: false });
     }
-
-  );
-
+  });
 });
-
-// ============================================================
-// LOGOUT
-// ============================================================
 
 app.post("/api/logout", (req, res) => {
-
   req.session.destroy((err) => {
-
     if (err) {
-
-      return res.status(500).json({
-        error:
-          "Failed to logout"
-      });
-
+      return res.status(500).json({ error: "Failed to logout" });
     }
-
-    res.json({
-      loggedOut: true
-    });
-
+    res.json({ loggedOut: true });
   });
-
 });
-
-// ============================================================
-// AUTH CHECK
-// ============================================================
 
 app.get("/api/auth/check", (req, res) => {
-
   if (req.session.user) {
-
-    res.json({
-
-      authenticated: true,
-
-      user:
-        req.session.user
-
-    });
-
+    res.json({ authenticated: true, user: req.session.user });
   } else {
-
-    res.json({
-      authenticated: false
-    });
-
+    res.json({ authenticated: false });
   }
-
 });
 
-// ============================================================
-// BIT SEARCH
-// ============================================================
-
-app.get(
-  "/api/get/:searchBitID/:searchKeyword/:searchType",
-
-  (req, res) => {
-
-    const {
-
-      searchKeyword,
-
-      searchBitID,
-
-      searchType
-
-    } = req.params;
-
-    let sql;
-    let params;
-
-    // ========================================================
-    // KEYWORD
-    // ========================================================
-
-    if (searchType === "Keyword") {
-
-      sql = `
-        SELECT
-          bits.BitID,
-          bits.Title,
-          artist.Name,
-          bits.ProphetNum,
-          bits.Time,
-          bits.Type
-
-        FROM tblbits bits
-
-        LEFT JOIN tblartist artist
-          ON bits.ArtistID = artist.ArtistID
-
-        WHERE LOCATE(?, bits.Title) > 0
-
-        ORDER BY bits.BitID DESC
-      `;
-
-      params = [
-        searchKeyword
-      ];
-
-    }
-
-    // ========================================================
-    // BIT ID
-    // ========================================================
-
-    else if (searchType === "Bit ID") {
-
-      sql = `
-        SELECT
-          bits.BitID,
-          bits.Title,
-          artist.Name,
-          bits.ProphetNum,
-          bits.Time,
-          bits.Type
-
-        FROM tblbits bits
-
-        LEFT JOIN tblartist artist
-          ON bits.ArtistID = artist.ArtistID
-
-        WHERE bits.BitID = ?
-      `;
-
-      params = [
-        searchBitID
-      ];
-
-    }
-
-    // ========================================================
-    // ARTIST
-    // ========================================================
-
-    else if (searchType === "Artist") {
-
-      sql = `
-        SELECT
-          bits.BitID,
-          bits.Title,
-          artist.Name,
-          bits.ProphetNum,
-          bits.Time,
-          bits.Type
-
-        FROM tblbits bits
-
-        LEFT JOIN tblartist artist
-          ON bits.ArtistID = artist.ArtistID
-
-        WHERE LOCATE(?, artist.Name) > 0
-
-        ORDER BY bits.BitID DESC
-      `;
-
-      params = [
-        searchKeyword
-      ];
-
-    }
-
-    else {
-
-      return res.status(400).json({
-        error:
-          "Invalid search type"
-      });
-
-    }
-
-    db.query(
-      sql,
-      params,
-
-      (err, result) => {
-
-        if (err) {
-
-          console.error(
-            "BIT SEARCH ERROR:",
-            err
-          );
-
-          return res.status(500).json({
-            error:
-              "Database error"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
+// Admin routes
+app.get("/api/admin/users", (req, res) => {
+  if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
-);
 
-// ============================================================
-// GET BIT FOR EDIT
-// ============================================================
-
-app.get(
-  "/api/get/bit/edit/:bitID",
-
-  async (req, res) => {
-
-    const bitID =
-      req.params.bitID;
-
-    if (!bitID) {
-
-      return res.status(400).json({
-        error:
-          "BitID is required"
-      });
-
+  const sql = "SELECT userid, login, role FROM tbllogin ORDER BY userid ASC";
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error("Error fetching users:", err);
+      return res.status(500).json({ error: "Database error" });
     }
-
-    try {
-
-      // ======================================================
-      // MAIN BIT
-      // ======================================================
-
-      const bitResult =
-        await query(
-
-          `
-          SELECT
-            BitID,
-            Title,
-            ProphetNum,
-            AirDate,
-            Time,
-            Type,
-            ArtistID
-
-          FROM tblbits
-
-          WHERE BitID = ?
-          `,
-
-          [bitID]
-
-        );
-
-      if (bitResult.length === 0) {
-
-        return res.status(404).json({
-          error:
-            "Bit not found"
-        });
-
-      }
-
-      const bit =
-        bitResult[0];
-
-      // ======================================================
-      // ALL RELATIONSHIP TABLES
-      // ======================================================
-
-      const [
-
-        categoryResult,
-
-        subjectResult,
-
-        celebrityResult,
-
-        sportResult,
-
-        seasonResult,
-
-        keywordResult,
-
-        hyperlinkResult,
-
-        albumResult
-
-      ] = await Promise.all([
-
-        query(
-          `
-          SELECT CatID
-          FROM ttblcategory
-          WHERE BitID = ?
-          ORDER BY CatID
-          `,
-          [bitID]
-        ),
-
-        query(
-          `
-          SELECT SubID
-          FROM ttblsubject
-          WHERE BitID = ?
-          ORDER BY SubID
-          `,
-          [bitID]
-        ),
-
-        query(
-          `
-          SELECT CelebID
-          FROM ttblceleb
-          WHERE BitID = ?
-          ORDER BY CelebID
-          `,
-          [bitID]
-        ),
-
-        query(
-          `
-          SELECT SportID
-          FROM ttblsports
-          WHERE BitID = ?
-          ORDER BY SportID
-          `,
-          [bitID]
-        ),
-
-        query(
-          `
-          SELECT SeasonID
-          FROM ttblseason
-          WHERE BitID = ?
-          ORDER BY SeasonID
-          `,
-          [bitID]
-        ),
-
-        query(
-          `
-          SELECT Keywords
-          FROM ttblkeywords
-          WHERE BitID = ?
-          `,
-          [bitID]
-        ),
-
-        query(
-          `
-          SELECT Hyperlink
-          FROM ttblhyperlink
-          WHERE BitID = ?
-          `,
-          [bitID]
-        ),
-
-        query(
-          `
-          SELECT
-            AlbumID,
-            Album_Track
-
-          FROM ttblalbum
-
-          WHERE BitID = ?
-
-          ORDER BY AlbumID
-          `,
-          [bitID]
-        )
-
-      ]);
-
-      // ======================================================
-      // RETURN
-      // ======================================================
-
-      res.json({
-
-        bitID:
-          bit.BitID,
-
-        type:
-          bit.Type || "",
-
-        title:
-          bit.Title || "",
-
-        category:
-          categoryResult[0]?.CatID || "",
-
-        categories:
-          categoryResult.map(
-            row => row.CatID
-          ),
-
-        artist:
-          bit.ArtistID || "",
-
-        date:
-          bit.AirDate
-            ? new Date(bit.AirDate)
-                .toISOString()
-                .split("T")[0]
-            : "",
-
-        time:
-          bit.Time || "",
-
-        autoNum:
-          bit.ProphetNum || "",
-
-        subjects:
-          subjectResult.map(
-            row => row.SubID
-          ),
-
-        celebrities:
-          celebrityResult.map(
-            row => row.CelebID
-          ),
-
-        sports:
-          sportResult.map(
-            row => row.SportID
-          ),
-
-        seasons:
-          seasonResult.map(
-            row => row.SeasonID
-          ),
-
-        keywords:
-          keywordResult
-            .map(row => row.Keywords)
-            .join(", "),
-
-        hyperlinks:
-          hyperlinkResult.map(
-            row => row.Hyperlink
-          ),
-
-        albums:
-          albumResult.map(
-            row => ({
-
-              album:
-                row.AlbumID,
-
-              track:
-                row.Album_Track || ""
-
-            })
-          )
-
-      });
-
-    } catch (err) {
-
-      console.error(
-        "GET BIT EDIT ERROR:",
-        err
-      );
-
-      res.status(500).json({
-
-        error:
-          "Failed to load bit",
-
-        details:
-          err.message
-
-      });
-
-    }
-
+    res.json(result);
+  });
+});
+
+app.post("/api/admin/users", (req, res) => {
+  if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
-);
 
-// ============================================================
-// GET COMPLETE BIT INFORMATION
-// ============================================================
-
-app.get(
-  "/api/get/bit/full/:bitID",
-
-  async (req, res) => {
-
-    const bitID =
-      req.params.bitID;
-
-    if (!bitID) {
-
-      return res.status(400).json({
-        error:
-          "BitID is required"
-      });
-
-    }
-
-    try {
-
-      const bitResult =
-        await query(
-
-          `
-          SELECT
-            b.BitID,
-            b.Title,
-            b.ProphetNum,
-            b.AirDate,
-            b.Time,
-            b.Type,
-            b.ArtistID,
-            a.Name AS ArtistName
-
-          FROM tblbits b
-
-          LEFT JOIN tblartist a
-            ON b.ArtistID = a.ArtistID
-
-          WHERE b.BitID = ?
-          `,
-
-          [bitID]
-
-        );
-
-      if (bitResult.length === 0) {
-
-        return res.status(404).json({
-          error:
-            "Bit not found"
-        });
-
-      }
-
-      const bit =
-        bitResult[0];
-
-      const [
-
-        categories,
-
-        subjects,
-
-        celebrities,
-
-        sports,
-
-        seasons,
-
-        keywords,
-
-        hyperlinks,
-
-        albums
-
-      ] = await Promise.all([
-
-        query(
-
-          `
-          SELECT
-            ck.Category
-
-          FROM ttblcategory tc
-
-          JOIN tblcatkey ck
-            ON tc.CatID = ck.CatID
-
-          WHERE tc.BitID = ?
-
-          ORDER BY ck.Category
-          `,
-
-          [bitID]
-
-        ),
-
-        query(
-
-          `
-          SELECT
-            sk.Subject
-
-          FROM ttblsubject ts
-
-          JOIN tblsubjectkey sk
-            ON ts.SubID = sk.SubID
-
-          WHERE ts.BitID = ?
-
-          ORDER BY sk.Subject
-          `,
-
-          [bitID]
-
-        ),
-
-        query(
-
-          `
-          SELECT
-            ck.Name
-
-          FROM ttblceleb tc
-
-          JOIN tblcelebkey ck
-            ON tc.CelebID = ck.CelebID
-
-          WHERE tc.BitID = ?
-
-          ORDER BY ck.Name
-          `,
-
-          [bitID]
-
-        ),
-
-        query(
-
-          `
-          SELECT
-            sk.Sport
-
-          FROM ttblsports ts
-
-          JOIN tblsportskey sk
-            ON ts.SportID = sk.SportID
-
-          WHERE ts.BitID = ?
-
-          ORDER BY sk.Sport
-          `,
-
-          [bitID]
-
-        ),
-
-        query(
-
-          `
-          SELECT
-            sk.Season
-
-          FROM ttblseason ts
-
-          JOIN tblseasonkey sk
-            ON ts.SeasonID = sk.SeasonID
-
-          WHERE ts.BitID = ?
-
-          ORDER BY sk.sorder
-          `,
-
-          [bitID]
-
-        ),
-
-        query(
-
-          `
-          SELECT Keywords
-
-          FROM ttblkeywords
-
-          WHERE BitID = ?
-          `,
-
-          [bitID]
-
-        ),
-
-        query(
-
-          `
-          SELECT Hyperlink
-
-          FROM ttblhyperlink
-
-          WHERE BitID = ?
-
-          ORDER BY Hyperlink
-          `,
-
-          [bitID]
-
-        ),
-
-        query(
-
-          `
-          SELECT
-            ak.Album_Name,
-            ta.Album_Track
-
-          FROM ttblalbum ta
-
-          JOIN tblalbumkey ak
-            ON ta.AlbumID = ak.AlbumID
-
-          WHERE ta.BitID = ?
-
-          ORDER BY ak.Album_Name
-          `,
-
-          [bitID]
-
-        )
-
-      ]);
-
-      res.json({
-
-        bitID:
-          bit.BitID,
-
-        title:
-          bit.Title || "",
-
-        type:
-          bit.Type || "",
-
-        artist:
-          bit.ArtistName || "",
-
-        artistID:
-          bit.ArtistID || "",
-
-        date:
-          bit.AirDate || "",
-
-        time:
-          bit.Time || "",
-
-        autoNum:
-          bit.ProphetNum || "",
-
-        categories:
-          categories.map(
-            row => row.Category
-          ),
-
-        subjects:
-          subjects.map(
-            row => row.Subject
-          ),
-
-        celebrities:
-          celebrities.map(
-            row => row.Name
-          ),
-
-        sports:
-          sports.map(
-            row => row.Sport
-          ),
-
-        seasons:
-          seasons.map(
-            row => row.Season
-          ),
-
-        keywords:
-          keywords.map(
-            row => row.Keywords
-          ),
-
-        hyperlinks:
-          hyperlinks.map(
-            row => row.Hyperlink
-          ),
-
-        albums:
-          albums.map(
-            row => ({
-
-              album:
-                row.Album_Name,
-
-              track:
-                row.Album_Track
-
-            })
-          )
-
-      });
-
-    } catch (err) {
-
-      console.error(
-        "FULL BIT GET ERROR:",
-        err
-      );
-
-      res.status(500).json({
-
-        error:
-          "Failed to retrieve complete bit information",
-
-        details:
-          err.message
-
-      });
-
-    }
-
+  const { username, password, role } = req.body;
+  const sql = "INSERT INTO tbllogin (login, pass, role) VALUES (?, ?, ?)";
+  db.query(sql, [username, password, role], (err, result) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json({ message: "User added", userid: result.insertId });
+  });
+});
+
+app.put("/api/admin/users/:id", (req, res) => {
+  if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
-);
+
+  const { username, password, role } = req.body;
+  const { id } = req.params;
+
+  let sql;
+  let params;
+
+  if (password) {
+    sql = `UPDATE tbllogin SET login = ?, pass = ?, role = ? WHERE userid = ?`;
+    params = [username, password, role, id];
+  } else {
+    sql = `UPDATE tbllogin SET login = ?, role = ? WHERE userid = ?`;
+    params = [username, role, id];
+  }
+
+  db.query(sql, params, (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Failed to update user" });
+    }
+    res.json({ message: "User updated successfully" });
+  });
+});
+
+app.delete("/api/admin/users/:userid", (req, res) => {
+  if (!req.session.user || !["admin", "owner"].includes(req.session.user.role)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { userid } = req.params;
+  const sql = "DELETE FROM tbllogin WHERE userid = ?";
+  db.query(sql, [userid], (err) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json({ message: "User deleted" });
+  });
+});
+
+// Bit detail routes
+app.get("/api/get/bit/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+  const sqlBit = "SELECT bits.BitID, bits.Title, bits.ProphetNum, bits.AirDate, bits.Time, bits.Type FROM tblbits bits WHERE bits.bitID = ?";
+  db.query(sqlBit, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/sport/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+  const sqlSport = "SELECT sportskey.Sport FROM tblsportskey sportskey, tblsports sports WHERE sportskey.SportID = sports.SportID AND sports.bitID = ?";
+  db.query(sqlSport, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/subject/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+  const sqlSubject = "SELECT subjectkey.Subject FROM tblsubjectkey subjectkey, tblsubject subject WHERE subject.SubID = subjectkey.SubID AND subject.BitID = ?";
+  db.query(sqlSubject, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/celeb1/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+  const sqlCeleb1 = "SELECT celebKey.Name FROM tblceleb celeb, tblcelebkey celebkey WHERE celeb.Celeb1_ID = celebkey.CelebID AND celeb.BitID = ?";
+  db.query(sqlCeleb1, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/celeb2/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+  const sqlCeleb2 = "SELECT celebKey.Name FROM tblceleb celeb, tblcelebkey celebkey WHERE celeb.Celeb2_ID = celebkey.CelebID AND celeb.BitID = ?";
+  db.query(sqlCeleb2, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/season/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+  const sqlSeason = "SELECT seasonkey.Season FROM tblseason season, tblseasonkey seasonkey WHERE season.SeasonID = seasonkey.SeasonID AND season.BitID = ?";
+  db.query(sqlSeason, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/category/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+  const sqlCategory = "SELECT catkey.Category FROM tblcatkey catkey, tblcategory category WHERE category.CatID = catkey.CatID AND category.BitID = ?";
+  db.query(sqlCategory, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/album/info/:searchBitID", (req, res) => {
+  const id = req.params.searchBitID;
+
+  const sql = `
+    SELECT
+      ak.Album_Name,
+      a.Album_Track
+    FROM tblalbum a
+    JOIN tblalbumkey ak
+      ON a.AlbumID = ak.AlbumID
+    WHERE a.BitID = ?
+    ORDER BY ak.Album_Name
+  `;
+
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error("Album query error:", err);
+      return res.status(500).json(err);
+    }
+
+    console.log("Albums:", result);
+
+    res.json(result);
+  });
+});
+
+app.get("/api/get/hyperlink/info/:searchBitID", (req, res) => {
+  const bitID = req.params.searchBitID;
+
+  const sqlHyperlink =
+    "SELECT Hyperlink FROM tblhyperlink WHERE BitID = ?";
+
+  db.query(sqlHyperlink, [bitID], (err, result) => {
+    if (err) {
+      console.log("HYPERLINK GET ERROR:", err);
+      return res.status(500).json(err);
+    }
+
+    // Return an array of hyperlink strings
+    const hyperlinks = result.map(row => row.Hyperlink);
+
+    res.json(hyperlinks);
+  });
+});
+// Search routes
+app.get("/api/get/log/:searchKeyword/:searchArtist/:searchDate/:searchType", (req, res) => {
+  const { keyword, artist, date, type } = req.params;
+  const { searchKeyword, searchArtist, searchDate, searchType } = req.params;
+
+  if (searchType == "Artist") {
+    const sql1 = "SELECT tblrunentries.bitDesc, tblrunentries.bTime, tblartist.Name, tblrunsheetdate.RSDate, tblrunsheetdate.RS_ID FROM tblrunentries INNER JOIN tblrunkey ON tblrunentries.L_ID = tblrunkey.L_ID INNER JOIN tblrunsheetdate ON tblrunkey.RS_ID = tblrunsheetdate.RS_ID INNER JOIN tblartist ON tblrunentries.ArtistID = tblartist.ArtistID WHERE tblrunentries.ArtistID = ?";
+    db.query(sql1, [searchArtist], (err, result) => {
+      if (err) console.log(err);
+      res.send(result);
+    });
+  } else if (searchType == "Date") {
+    const sql2 = "SELECT tblartist.Name, tblartist.ArtistID, tblrunentries.bTime, tblrunentries.L_ID, tblrunentries.bitDesc, tblrunsheetdate.RS_ID, tblrunsheetdate.RSDate FROM tblartist INNER JOIN tblrunentries ON tblrunentries.ArtistID = tblartist.ArtistID INNER JOIN tblrunkey ON tblrunkey.L_ID = tblrunentries.L_ID INNER JOIN tblrunsheetdate ON tblrunsheetdate.RS_ID = tblrunkey.RS_ID WHERE LOCATE(?, tblrunsheetdate.RSDate) > 0";
+    db.query(sql2, [searchDate], (err, result) => {
+      if (err) console.log(err);
+      res.send(result);
+    });
+  } else if (searchType == "keyword") {
+    const sql3 = "SELECT tblartist.Name, tblartist.ArtistID, tblrunentries.bTime, tblrunentries.L_ID, tblrunentries.bitDesc, tblrunsheetdate.RS_ID, tblrunsheetdate.RSDate FROM tblrunentries JOIN tblrunkey ON tblrunentries.L_ID = tblrunkey.L_ID JOIN tblrunsheetdate ON tblrunkey.RS_ID = tblrunsheetdate.RS_ID JOIN tblartist ON tblrunentries.ArtistID = tblartist.ArtistID WHERE LOCATE(?, tblrunentries.bitDesc) > 0";
+    db.query(sql3, [searchKeyword], (err, result) => {
+      if (err) console.log(err);
+      res.send(result);
+    });
+  } else {
+    res.status(400).json({ error: "Invalid search type" });
+  }
+});
+
+app.get("/api/get/:searchBitID/:searchKeyword/:searchType", (req, res) => {
+  const { searchKeyword, searchBitID, searchType } = req.params;
+
+  if (searchType == "Keyword") {
+    const sqlSelect = "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND LOCATE(?, bits.Title) > 0";
+    db.query(sqlSelect, [searchKeyword], (err, result) => {
+      res.send(result);
+    });
+  } else if (searchType == "Bit ID") {
+    const sqlSelect = "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND bits.bitID = ?";
+    db.query(sqlSelect, [searchBitID], (err, result) => {
+      res.send(result);
+    });
+  } else if (searchType == "Artist") {
+    const sqlSelect = "SELECT bits.BitID, bits.Title, artist.Name, bits.ProphetNum, bits.Time, bits.Type FROM tblbits bits, tblartist artist WHERE bits.artistID = artist.artistID AND LOCATE(?, artist.name) > 0";
+    db.query(sqlSelect, [searchBitID], (err, result) => {
+      res.send(result);
+    });
+  } else {
+    res.status(400).json({ error: "Invalid search type" });
+  }
+});
+
+app.get("/api/get/log/:logID", (req, res) => {
+  const id = req.params.logID;
+  const sqlSelect = "SELECT runkey.RS_ID FROM tblrunkey runkey WHERE L_ID = ?";
+  db.query(sqlSelect, [id], (err, result) => {
+    res.send(result);
+  });
+});
+
+app.get("/api/get/log/details/:RS_ID", (req, res) => {
+  const RS_ID = req.params.RS_ID;
+
+  if (!RS_ID) return res.status(400).json({ error: "RS_ID is required" });
+
+  const sql = `
+    SELECT 
+      k.RS_ID,
+      d.RSDate,
+      e.bTime,
+      e.bitDesc,
+      a.Name AS ArtistName
+    FROM tblrunkey k
+    JOIN tblrunentries e ON k.L_ID = e.L_ID
+    JOIN tblrunsheetdate d ON k.RS_ID = d.RS_ID
+    LEFT JOIN tblartist a ON e.ArtistID = a.ArtistID
+    WHERE k.RS_ID = ?
+    ORDER BY e.bTime ASC
+  `;
+
+  db.query(sql, [RS_ID], (err, result) => {
+    if (err) {
+      console.error("Error fetching log details:", err);
+      return res.status(500).json({ error: "Failed to fetch log details" });
+    }
+    res.json(result);
+  });
+});
+
 
 // ============================================================
 // UPDATE COMPLETE BIT
 // ============================================================
 
-app.post(
-  "/api/update/bit",
+app.post("/api/update/bit", async (req, res) => {
+  const {
+    bitID,
+    type,
+    title,
+    category,
+    artist,
+    date,
+    time,
+    autoNum,
 
-  async (req, res) => {
+    subjects = [],
 
-    const {
+    celebrity1,
+    celebrity2,
 
-      bitID,
+    sport,
+    season,
 
-      type,
+    keywords,
 
-      title,
+    hyperlinks = [],
 
-      category,
+    albums = []
+  } = req.body;
 
-      categories = [],
+  // ==========================================================
+  // VALIDATE BIT ID
+  // ==========================================================
 
-      artist,
+  if (!bitID) {
+    return res.status(400).json({
+      error: "BitID is required"
+    });
+  }
 
-      date,
+  // ==========================================================
+  // PROMISE QUERY HELPER
+  // ==========================================================
 
-      time,
-
-      autoNum,
-
-      subjects = [],
-
-      celebrities = [],
-
-      celebrity1,
-
-      celebrity2,
-
-      sport,
-
-      sports = [],
-
-      season,
-
-      seasons = [],
-
-      keywords,
-
-      hyperlinks = [],
-
-      albums = []
-
-    } = req.body;
-
-    if (!bitID) {
-
-      return res.status(400).json({
-        error:
-          "BitID is required"
+  const query = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.query(sql, params, (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
+        }
       });
+    });
+  };
 
-    }
+  try {
 
-    try {
+    console.log("==========================================");
+    console.log("UPDATING BIT:", bitID);
+    console.log("PAYLOAD:", req.body);
+    console.log("==========================================");
 
-      // ======================================================
-      // UPDATE MAIN BIT
-      // ======================================================
+
+    // ==========================================================
+    // 1. UPDATE MAIN BIT TABLE
+    // ==========================================================
+
+    await query(
+      `
+      UPDATE tblbits
+      SET
+        AirDate = ?,
+        Title = ?,
+        ArtistID = ?,
+        ProphetNum = ?,
+        Time = ?,
+        Type = ?
+      WHERE BitID = ?
+      `,
+      [
+        date || null,
+        title || null,
+        artist || null,
+        autoNum || null,
+        time || null,
+        type || null,
+        bitID
+      ]
+    );
+
+
+    // ==========================================================
+    // 2. DELETE OLD RELATIONSHIP DATA
+    // ==========================================================
+
+    await query(
+      "DELETE FROM ttblcategory WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblsubject WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblceleb WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblsports WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblseason WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblkeywords WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblhyperlink WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblalbum WHERE BitID = ?",
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // 3. CATEGORY
+    // ==========================================================
+
+    if (category) {
 
       await query(
-
         `
-        UPDATE tblbits
-
-        SET
-
-          AirDate = ?,
-
-          Title = ?,
-
-          ArtistID = ?,
-
-          ProphetNum = ?,
-
-          Time = ?,
-
-          Type = ?
-
-        WHERE BitID = ?
+        INSERT INTO ttblcategory
+        (BitID, CatID)
+        VALUES (?, ?)
         `,
-
         [
-
-          date || null,
-
-          title || null,
-
-          artist || null,
-
-          autoNum || null,
-
-          time || null,
-
-          type || null,
-
-          bitID
-
+          bitID,
+          category
         ]
-
       );
 
-      // ======================================================
-      // DELETE OLD RELATIONSHIPS
-      // ======================================================
+    }
 
-      await Promise.all([
 
-        query(
-          "DELETE FROM ttblcategory WHERE BitID = ?",
-          [bitID]
-        ),
+    // ==========================================================
+    // 4. SUBJECTS
+    // ==========================================================
 
-        query(
-          "DELETE FROM ttblsubject WHERE BitID = ?",
-          [bitID]
-        ),
-
-        query(
-          "DELETE FROM ttblceleb WHERE BitID = ?",
-          [bitID]
-        ),
-
-        query(
-          "DELETE FROM ttblsports WHERE BitID = ?",
-          [bitID]
-        ),
-
-        query(
-          "DELETE FROM ttblseason WHERE BitID = ?",
-          [bitID]
-        ),
-
-        query(
-          "DELETE FROM ttblkeywords WHERE BitID = ?",
-          [bitID]
-        ),
-
-        query(
-          "DELETE FROM ttblhyperlink WHERE BitID = ?",
-          [bitID]
-        ),
-
-        query(
-          "DELETE FROM ttblalbum WHERE BitID = ?",
-          [bitID]
-        )
-
-      ]);
-
-      // ======================================================
-      // CATEGORIES
-      // ======================================================
-
-      let cleanCategories =
-        Array.isArray(categories)
-          ? [...new Set(categories.filter(Boolean))]
-          : [];
-
-      if (
-        cleanCategories.length === 0 &&
-        category
-      ) {
-
-        cleanCategories.push(category);
-
-      }
-
-      if (cleanCategories.length > 0) {
-
-        const values =
-          cleanCategories.map(
-            catID => [
-              bitID,
-              catID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblcategory
-          (
-            BitID,
-            CatID
+    const cleanSubjects = Array.isArray(subjects)
+      ? [...new Set(
+          subjects.filter(
+            subject =>
+              subject !== null &&
+              subject !== undefined &&
+              subject !== ""
           )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // SUBJECTS
-      // ======================================================
-
-      const cleanSubjects =
-        Array.isArray(subjects)
-
-          ? [...new Set(
-              subjects.filter(Boolean)
-            )]
-
-          : [];
-
-      if (cleanSubjects.length > 0) {
-
-        const values =
-          cleanSubjects.map(
-            subID => [
-              bitID,
-              subID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblsubject
-          (
-            BitID,
-            SubID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // CELEBRITIES
-      // ======================================================
-
-      let cleanCelebrities =
-        Array.isArray(celebrities)
-
-          ? celebrities.filter(Boolean)
-
-          : [];
-
-      // Backwards compatibility
-
-      if (
-        cleanCelebrities.length === 0
-      ) {
-
-        cleanCelebrities =
-          [
-            celebrity1,
-            celebrity2
-          ].filter(Boolean);
-
-      }
-
-      cleanCelebrities =
-        [...new Set(cleanCelebrities)];
-
-      if (cleanCelebrities.length > 0) {
-
-        const values =
-          cleanCelebrities.map(
-            celebID => [
-              bitID,
-              celebID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblceleb
-          (
-            BitID,
-            CelebID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // SPORTS
-      // ======================================================
-
-      let cleanSports =
-        Array.isArray(sports)
-          ? [...new Set(sports.filter(Boolean))]
-          : [];
-
-      if (
-        cleanSports.length === 0 &&
-        sport
-      ) {
-
-        cleanSports.push(sport);
-
-      }
-
-      if (cleanSports.length > 0) {
-
-        const values =
-          cleanSports.map(
-            sportID => [
-              bitID,
-              sportID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblsports
-          (
-            BitID,
-            SportID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // SEASONS
-      // ======================================================
-
-      let cleanSeasons =
-        Array.isArray(seasons)
-          ? [...new Set(seasons.filter(Boolean))]
-          : [];
-
-      if (
-        cleanSeasons.length === 0 &&
-        season
-      ) {
-
-        cleanSeasons.push(season);
-
-      }
-
-      if (cleanSeasons.length > 0) {
-
-        const values =
-          cleanSeasons.map(
-            seasonID => [
-              bitID,
-              seasonID
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblseason
-          (
-            BitID,
-            SeasonID
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // KEYWORDS
-      // ======================================================
-
-      if (
-        keywords &&
-        String(keywords).trim() !== ""
-      ) {
-
-        await query(
-
-          `
-          INSERT INTO ttblkeywords
-          (
-            BitID,
-            Keywords
-          )
-          VALUES (?, ?)
-          `,
-
-          [
-
-            bitID,
-
-            String(keywords).trim()
-
-          ]
-
-        );
-
-      }
-
-      // ======================================================
-      // HYPERLINKS
-      // ======================================================
-
-      const cleanHyperlinks =
-        Array.isArray(hyperlinks)
-
-          ? hyperlinks
-              .filter(
-                link =>
-                  link &&
-                  String(link).trim() !== ""
-              )
-              .map(
-                link =>
-                  String(link).trim()
-              )
-
-          : [];
-
-      if (cleanHyperlinks.length > 0) {
-
-        const values =
-          cleanHyperlinks.map(
-            link => [
-              bitID,
-              link
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblhyperlink
-          (
-            BitID,
-            Hyperlink
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      // ======================================================
-      // ALBUMS
-      // ======================================================
-
-      const cleanAlbums =
-        Array.isArray(albums)
-
-          ? albums.filter(
-              album =>
-                album &&
-                album.album
-            )
-
-          : [];
-
-      if (cleanAlbums.length > 0) {
-
-        const values =
-          cleanAlbums.map(
-            album => [
-
-              bitID,
-
-              album.album,
-
-              album.track || null
-
-            ]
-          );
-
-        await query(
-
-          `
-          INSERT INTO ttblalbum
-          (
-            BitID,
-            AlbumID,
-            Album_Track
-          )
-          VALUES ?
-          `,
-
-          [values]
-
-        );
-
-      }
-
-      res.json({
-
-        message:
-          "Bit updated successfully",
-
-        bitID
-
-      });
-
-    } catch (err) {
-
-      console.error(
-        "UPDATE BIT ERROR:",
-        err
+        )]
+      : [];
+
+    if (cleanSubjects.length > 0) {
+
+      const subjectValues =
+        cleanSubjects.map(subID => [
+          bitID,
+          subID
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblsubject
+        (BitID, SubID)
+        VALUES ?
+        `,
+        [subjectValues]
       );
 
-      res.status(500).json({
+    }
 
-        error:
-          "Failed to update bit",
 
-        details:
-          err.message,
+    // ==========================================================
+    // 5. CELEBRITIES
+    // ==========================================================
 
-        sqlMessage:
-          err.sqlMessage || null,
+    const celebrities = [
+      celebrity1,
+      celebrity2
+    ].filter(
+      celebrity =>
+        celebrity !== null &&
+        celebrity !== undefined &&
+        celebrity !== ""
+    );
 
-        code:
-          err.code || null
+    const cleanCelebrities =
+      [...new Set(celebrities)];
 
-      });
+    if (cleanCelebrities.length > 0) {
+
+      const celebrityValues =
+        cleanCelebrities.map(celebID => [
+          bitID,
+          celebID
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblceleb
+        (BitID, CelebID)
+        VALUES ?
+        `,
+        [celebrityValues]
+      );
 
     }
 
-  }
-);
 
-// ============================================================
-// RUN SHEET SEARCH
-// ============================================================
+    // ==========================================================
+    // 6. SPORT
+    // ==========================================================
 
-app.get(
-  "/api/get/log/:searchKeyword/:searchArtist/:searchDate/:searchType",
+    if (sport) {
 
-  (req, res) => {
-
-    const {
-
-      searchKeyword,
-
-      searchArtist,
-
-      searchDate,
-
-      searchType
-
-    } = req.params;
-
-    let sql;
-    let params;
-
-    if (searchType === "Artist") {
-
-      sql = `
-
-        SELECT
-
-          tblrunentries.bitDesc,
-
-          tblrunentries.bTime,
-
-          tblartist.Name,
-
-          tblrunsheetdate.RSDate,
-
-          tblrunsheetdate.RS_ID
-
-        FROM tblrunentries
-
-        INNER JOIN tblrunkey
-
-          ON tblrunentries.L_ID =
-             tblrunkey.L_ID
-
-        INNER JOIN tblrunsheetdate
-
-          ON tblrunkey.RS_ID =
-             tblrunsheetdate.RS_ID
-
-        INNER JOIN tblartist
-
-          ON tblrunentries.ArtistID =
-             tblartist.ArtistID
-
-        WHERE tblrunentries.ArtistID = ?
-
-      `;
-
-      params = [
-        searchArtist
-      ];
+      await query(
+        `
+        INSERT INTO ttblsports
+        (BitID, SportID)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          sport
+        ]
+      );
 
     }
 
-    else if (searchType === "Date") {
 
-      sql = `
+    // ==========================================================
+    // 7. SEASON
+    // ==========================================================
 
-        SELECT
+    if (season) {
 
-          tblartist.Name,
-
-          tblartist.ArtistID,
-
-          tblrunentries.bTime,
-
-          tblrunentries.L_ID,
-
-          tblrunentries.bitDesc,
-
-          tblrunsheetdate.RS_ID,
-
-          tblrunsheetdate.RSDate
-
-        FROM tblartist
-
-        INNER JOIN tblrunentries
-
-          ON tblrunentries.ArtistID =
-             tblartist.ArtistID
-
-        INNER JOIN tblrunkey
-
-          ON tblrunkey.L_ID =
-             tblrunentries.L_ID
-
-        INNER JOIN tblrunsheetdate
-
-          ON tblrunsheetdate.RS_ID =
-             tblrunkey.RS_ID
-
-        WHERE LOCATE(
-          ?,
-          tblrunsheetdate.RSDate
-        ) > 0
-
-      `;
-
-      params = [
-        searchDate
-      ];
+      await query(
+        `
+        INSERT INTO ttblseason
+        (BitID, SeasonID)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          season
+        ]
+      );
 
     }
 
-    else if (
-      searchType === "Keyword" ||
-      searchType === "keyword"
+
+    // ==========================================================
+    // 8. KEYWORDS
+    // ==========================================================
+
+    if (
+      keywords &&
+      String(keywords).trim() !== ""
     ) {
 
-      sql = `
-
-        SELECT
-
-          tblartist.Name,
-
-          tblartist.ArtistID,
-
-          tblrunentries.bTime,
-
-          tblrunentries.L_ID,
-
-          tblrunentries.bitDesc,
-
-          tblrunsheetdate.RS_ID,
-
-          tblrunsheetdate.RSDate
-
-        FROM tblrunentries
-
-        JOIN tblrunkey
-
-          ON tblrunentries.L_ID =
-             tblrunkey.L_ID
-
-        JOIN tblrunsheetdate
-
-          ON tblrunkey.RS_ID =
-             tblrunsheetdate.RS_ID
-
-        JOIN tblartist
-
-          ON tblrunentries.ArtistID =
-             tblartist.ArtistID
-
-        WHERE LOCATE(
-          ?,
-          tblrunentries.bitDesc
-        ) > 0
-
-      `;
-
-      params = [
-        searchKeyword
-      ];
+      await query(
+        `
+        INSERT INTO ttblkeywords
+        (BitID, Keywords)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          String(keywords).trim()
+        ]
+      );
 
     }
 
-    else {
 
-      return res.status(400).json({
-        error:
-          "Invalid search type"
-      });
+    // ==========================================================
+    // 9. HYPERLINKS
+    // ==========================================================
+
+    const cleanHyperlinks =
+      Array.isArray(hyperlinks)
+        ? hyperlinks
+            .filter(
+              link =>
+                link &&
+                String(link).trim() !== ""
+            )
+            .map(
+              link =>
+                String(link).trim()
+            )
+        : [];
+
+    if (cleanHyperlinks.length > 0) {
+
+      const hyperlinkValues =
+        cleanHyperlinks.map(link => [
+          bitID,
+          link
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblhyperlink
+        (BitID, Hyperlink)
+        VALUES ?
+        `,
+        [hyperlinkValues]
+      );
 
     }
 
-    db.query(
 
-      sql,
-
-      params,
-
-      (err, result) => {
-
-        if (err) {
-
-          console.error(
-            "LOG SEARCH ERROR:",
-            err
-          );
-
-          return res.status(500).json({
-            error:
-              "Database error"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// GET RUN SHEET
-// ============================================================
-
-app.get(
-  "/api/get/runSheet/:RS_ID",
-
-  (req, res) => {
-
-    const RS_ID =
-      req.params.RS_ID;
-
-    const sql = `
-
-      SELECT
-
-        rk.RS_ID,
-
-        rsd.RSDate,
-
-        e.L_ID,
-
-        e.bTime,
-
-        e.bitDesc,
-
-        e.ArtistID
-
-      FROM tblrunkey rk
-
-      JOIN tblrunentries e
-        ON rk.L_ID = e.L_ID
-
-      JOIN tblrunsheetdate rsd
-        ON rk.RS_ID = rsd.RS_ID
-
-      WHERE rk.RS_ID = ?
-
-      ORDER BY e.bTime ASC
-
-    `;
-
-    db.query(
-
-      sql,
-
-      [RS_ID],
-
-      (err, result) => {
-
-        if (err) {
-
-          console.error(err);
-
-          return res.status(500).json({
-            error:
-              "Database error"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// GET LOG DETAILS
-// ============================================================
-
-app.get(
-  "/api/get/log/details/:RS_ID",
-
-  (req, res) => {
-
-    const RS_ID =
-      req.params.RS_ID;
-
-    const sql = `
-
-      SELECT
-
-        k.RS_ID,
-
-        d.RSDate,
-
-        e.bTime,
-
-        e.bitDesc,
-
-        a.Name AS ArtistName
-
-      FROM tblrunkey k
-
-      JOIN tblrunentries e
-        ON k.L_ID = e.L_ID
-
-      JOIN tblrunsheetdate d
-        ON k.RS_ID = d.RS_ID
-
-      LEFT JOIN tblartist a
-        ON e.ArtistID = a.ArtistID
-
-      WHERE k.RS_ID = ?
-
-      ORDER BY e.bTime ASC
-
-    `;
-
-    db.query(
-
-      sql,
-
-      [RS_ID],
-
-      (err, result) => {
-
-        if (err) {
-
-          console.error(err);
-
-          return res.status(500).json({
-            error:
-              "Failed to fetch log details"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// ARTIST ROUTES
-// ============================================================
-
-app.post(
-  "/artist/",
-
-  (req, res) => {
-
-    const name =
-      req.body.name;
-
-    db.query(
-
-      `
-      INSERT INTO tblartist
-      (Name)
-      VALUES (?)
-      `,
-
-      [name],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to insert artist"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/delete/artist",
-
-  (req, res) => {
-
-    const id =
-      req.body.deleteArtist;
-
-    db.query(
-
-      `
-      DELETE FROM tblartist
-      WHERE ArtistID = ?
-      `,
-
-      [id],
-
-      (err) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to delete artist"
-          });
-
-        }
-
-        res.json({
-          message:
-            "Artist deleted"
-        });
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// CELEBRITY ROUTES
-// ============================================================
-
-app.get(
-  "/api/get/celebrities",
-
-  (req, res) => {
-
-    db.query(
-
-      `
-      SELECT *
-      FROM tblcelebkey
-      ORDER BY Name
-      `,
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to get celebrities"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/celebrity",
-
-  (req, res) => {
-
-    const name =
-      req.body.name;
-
-    db.query(
-
-      `
-      INSERT INTO tblcelebkey
-      (Name)
-      VALUES (?)
-      `,
-
-      [name],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to add celebrity"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/delete/celebrity",
-
-  (req, res) => {
-
-    const celebID =
-      req.body.deleteCelebrity;
-
-    db.query(
-
-      `
-      DELETE FROM tblcelebkey
-      WHERE CelebID = ?
-      `,
-
-      [celebID],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to delete celebrity"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// SEASON ROUTES
-// ============================================================
-
-app.get(
-  "/api/get/seasons",
-
-  (req, res) => {
-
-    db.query(
-
-      `
-      SELECT *
-      FROM tblseasonkey
-      ORDER BY sorder, Season
-      `,
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to get seasons"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/insert/season",
-
-  (req, res) => {
-
-    const season =
-      req.body.season;
-
-    db.query(
-
-      `
-      INSERT INTO tblseasonkey
-      (Season)
-      VALUES (?)
-      `,
-
-      [season],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to insert season"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/delete/season",
-
-  (req, res) => {
-
-    const id =
-      req.body.deleteSeason;
-
-    db.query(
-
-      `
-      DELETE FROM tblseasonkey
-      WHERE SeasonID = ?
-      `,
-
-      [id],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to delete season"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// SPORT ROUTES
-// ============================================================
-
-app.get(
-  "/api/get/sports",
-
-  (req, res) => {
-
-    db.query(
-
-      `
-      SELECT *
-      FROM tblsportskey
-      ORDER BY Sport
-      `,
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to get sports"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/insert/sport",
-
-  (req, res) => {
-
-    const sport =
-      req.body.sport;
-
-    db.query(
-
-      `
-      INSERT INTO tblsportskey
-      (Sport)
-      VALUES (?)
-      `,
-
-      [sport],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to insert sport"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/delete/sport",
-
-  (req, res) => {
-
-    const id =
-      req.body.deleteSport;
-
-    db.query(
-
-      `
-      DELETE FROM tblsportskey
-      WHERE SportID = ?
-      `,
-
-      [id],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to delete sport"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// SUBJECT ROUTES
-// ============================================================
-
-app.get(
-  "/api/get/subjects",
-
-  (req, res) => {
-
-    db.query(
-
-      `
-      SELECT *
-      FROM tblsubjectkey
-      ORDER BY Subject
-      `,
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to get subjects"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/insert/subject",
-
-  (req, res) => {
-
-    const subject =
-      req.body.subject;
-
-    db.query(
-
-      `
-      INSERT INTO tblsubjectkey
-      (Subject)
-      VALUES (?)
-      `,
-
-      [subject],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to insert subject"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/delete/subject",
-
-  (req, res) => {
-
-    const id =
-      req.body.deleteSubject;
-
-    db.query(
-
-      `
-      DELETE FROM tblsubjectkey
-      WHERE SubID = ?
-      `,
-
-      [id],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to delete subject"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// ALBUM ROUTES
-// ============================================================
-
-app.get(
-  "/api/get/albums",
-
-  (req, res) => {
-
-    db.query(
-
-      `
-      SELECT *
-      FROM tblalbumkey
-      ORDER BY Album_Name
-      `,
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to get albums"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/insert/album",
-
-  (req, res) => {
-
-    const album =
-      req.body.album;
-
-    db.query(
-
-      `
-      INSERT INTO tblalbumkey
-      (Album_Name)
-      VALUES (?)
-      `,
-
-      [album],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to insert album"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-app.post(
-  "/api/delete/album",
-
-  (req, res) => {
-
-    const id =
-      req.body.deleteAlbum;
-
-    db.query(
-
-      `
-      DELETE FROM tblalbumkey
-      WHERE AlbumID = ?
-      `,
-
-      [id],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json({
-            error:
-              "Failed to delete album"
-          });
-
-        }
-
-        res.json(result);
-
-      }
-
-    );
-
-  }
-);
-
-// ============================================================
-// START SERVER
-// ============================================================
-
-app.listen(
-  PORT,
-
-  "0.0.0.0",
-
-  () => {
+    // ==========================================================
+    // 10. ALBUMS
+    // ==========================================================
+
+    const cleanAlbums =
+      Array.isArray(albums)
+        ? albums.filter(
+            album =>
+              album &&
+              album.album !== null &&
+              album.album !== undefined &&
+              album.album !== ""
+          )
+        : [];
+
+    if (cleanAlbums.length > 0) {
+
+      const albumValues =
+        cleanAlbums.map(album => [
+          bitID,
+          album.album,
+          album.track || null
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblalbum
+        (BitID, AlbumID, Album_Track)
+        VALUES ?
+        `,
+        [albumValues]
+      );
+
+    }
+
+
+    // ==========================================================
+    // SUCCESS
+    // ==========================================================
 
     console.log(
-      `Server running on port ${PORT}`
+      `BIT ${bitID} UPDATED SUCCESSFULLY`
     );
 
+    return res.status(200).json({
+      message: "Bit updated successfully",
+      bitID
+    });
+
+
+  } catch (err) {
+
+    console.error(
+      "UPDATE BIT ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      error: "Failed to update bit",
+      details: err.message,
+      sqlMessage: err.sqlMessage || null,
+      code: err.code || null
+    });
+
   }
-);
+
+});
+
+app.get("/api/get/bit/edit/:bitID", async (req, res) => {
+  const bitID = req.params.bitID;
+
+  if (!bitID) {
+    return res.status(400).json({
+      error: "BitID is required"
+    });
+  }
+
+  const query = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.query(sql, params, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+  };
+
+  try {
+
+    // ==========================================================
+    // MAIN BIT
+    // ==========================================================
+
+    const bitResult = await query(
+      `
+      SELECT
+        BitID,
+        Title,
+        ProphetNum,
+        AirDate,
+        Time,
+        Type,
+        ArtistID
+      FROM tblbits
+      WHERE BitID = ?
+      `,
+      [bitID]
+    );
+
+    if (bitResult.length === 0) {
+      return res.status(404).json({
+        error: "Bit not found"
+      });
+    }
+
+    const bit = bitResult[0];
+
+
+    // ==========================================================
+    // CATEGORIES
+    // ==========================================================
+
+    const categoryResult = await query(
+      `
+      SELECT CatID
+      FROM ttblcategory
+      WHERE BitID = ?
+      ORDER BY CatID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // SUBJECTS
+    // ==========================================================
+
+    const subjectResult = await query(
+      `
+      SELECT SubID
+      FROM ttblsubject
+      WHERE BitID = ?
+      ORDER BY SubID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // CELEBRITIES
+    // ==========================================================
+
+    const celebrityResult = await query(
+      `
+      SELECT CelebID
+      FROM ttblceleb
+      WHERE BitID = ?
+      ORDER BY CelebID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // SPORTS
+    // ==========================================================
+
+    const sportResult = await query(
+      `
+      SELECT SportID
+      FROM ttblsports
+      WHERE BitID = ?
+      ORDER BY SportID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // SEASONS
+    // ==========================================================
+
+    const seasonResult = await query(
+      `
+      SELECT SeasonID
+      FROM ttblseason
+      WHERE BitID = ?
+      ORDER BY SeasonID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // KEYWORDS
+    // ==========================================================
+
+    const keywordResult = await query(
+      `
+      SELECT Keywords
+      FROM ttblkeywords
+      WHERE BitID = ?
+      ORDER BY KeywordID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // HYPERLINKS
+    // ==========================================================
+
+    const hyperlinkResult = await query(
+      `
+      SELECT LinkID, Hyperlink
+      FROM ttblhyperlink
+      WHERE BitID = ?
+      ORDER BY LinkID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // ALBUMS
+    // ==========================================================
+
+    const albumResult = await query(
+      `
+      SELECT
+        AlbumID,
+        Album_Track
+      FROM ttblalbum
+      WHERE BitID = ?
+      ORDER BY AlbumID, Album_Track
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // RETURN EVERYTHING
+    // ==========================================================
+
+    res.json({
+
+      bitID: bit.BitID,
+
+      type: bit.Type || "",
+
+      title: bit.Title || "",
+
+      category:
+        categoryResult.length > 0
+          ? categoryResult[0].CatID
+          : "",
+
+      categories:
+        categoryResult.map(row => row.CatID),
+
+      artist: bit.ArtistID || "",
+
+      date: bit.AirDate
+        ? new Date(bit.AirDate).toISOString().split("T")[0]
+        : "",
+
+      time: bit.Time || "",
+
+      autoNum: bit.ProphetNum || "",
+
+      subjects:
+        subjectResult.map(row => row.SubID),
+
+      celebrities:
+        celebrityResult.map(row => row.CelebID),
+
+      sports:
+        sportResult.map(row => row.SportID),
+
+      seasons:
+        seasonResult.map(row => row.SeasonID),
+
+      keywords:
+        keywordResult.length > 0
+          ? keywordResult[0].Keywords
+          : "",
+
+      hyperlinks:
+        hyperlinkResult.map(row => row.Hyperlink),
+
+      albums:
+        albumResult.map(row => ({
+          album: row.AlbumID,
+          track: row.Album_Track || ""
+        }))
+    });
+
+  } catch (err) {
+
+    console.error("GET BIT EDIT ERROR:", err);
+
+    res.status(500).json({
+      error: "Failed to load bit",
+      details: err.message
+    });
+  }
+});
+
+
+
+// Artist routes
+app.post("/artist/", (req, res) => {
+  const name = req.body.name;
+
+  const sqlInsert = "INSERT INTO tblartist (Name) VALUES (?)";
+  db.query(sqlInsert, [name], (err) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Failed to insert artist" });
+    }
+    res.json({ message: "Artist added" });
+  });
+});
+
+app.post("/api/delete/artist", (req, res) => {
+  const id = req.body.deleteArtist;
+
+  const sql1 = 'DELETE FROM tblartist WHERE ArtistID = ?';
+  db.query(sql1, [id], (err) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ error: "Failed to delete artist" });
+    }
+    res.json({ message: "Artist deleted" });
+  });
+});
+
+
+// ==========================================
+// GET COMPLETE BIT INFORMATION
+// Uses new ttbl relationship tables
+// ==========================================
+app.get("/api/get/bit/full/:bitID", async (req, res) => {
+  const bitID = req.params.bitID;
+
+  if (!bitID) {
+    return res.status(400).json({
+      error: "bitID is required"
+    });
+  }
+
+  const query = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.query(sql, params, (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+
+  try {
+
+    // ==========================================
+    // MAIN BIT INFORMATION
+    // ==========================================
+
+    const bitResult = await query(
+      `
+      SELECT
+        b.BitID,
+        b.Title,
+        b.ProphetNum,
+        b.AirDate,
+        b.Time,
+        b.Type,
+        b.ArtistID,
+        a.Name AS ArtistName
+      FROM tblbits b
+      LEFT JOIN tblartist a
+        ON b.ArtistID = a.ArtistID
+      WHERE b.BitID = ?
+      `,
+      [bitID]
+    );
+
+    if (bitResult.length === 0) {
+      return res.status(404).json({
+        error: "Bit not found"
+      });
+    }
+
+    const bit = bitResult[0];
+
+
+    // ==========================================
+    // CATEGORIES
+    // ==========================================
+
+    const categories = await query(
+      `
+      SELECT
+        c.CatID,
+        ck.Category
+      FROM ttblcategory c
+      LEFT JOIN tblcatkey ck
+        ON c.CatID = ck.CatID
+      WHERE c.BitID = ?
+      ORDER BY ck.Category
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // SUBJECTS
+    // ==========================================
+
+    const subjects = await query(
+      `
+      SELECT
+        s.SubID,
+        sk.Subject
+      FROM ttblsubject s
+      LEFT JOIN tblsubjectkey sk
+        ON s.SubID = sk.SubID
+      WHERE s.BitID = ?
+      ORDER BY sk.Subject
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // CELEBRITIES
+    // ==========================================
+
+    const celebrities = await query(
+      `
+      SELECT
+        c.CelebID,
+        ck.Name
+      FROM ttblceleb c
+      LEFT JOIN tblcelebkey ck
+        ON c.CelebID = ck.CelebID
+      WHERE c.BitID = ?
+      ORDER BY ck.Name
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // SPORTS
+    // ==========================================
+
+    const sports = await query(
+      `
+      SELECT
+        s.SportID,
+        sk.Sport
+      FROM ttblsports s
+      LEFT JOIN tblsportskey sk
+        ON s.SportID = sk.SportID
+      WHERE s.BitID = ?
+      ORDER BY sk.Sport
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // SEASONS
+    // ==========================================
+
+    const seasons = await query(
+      `
+      SELECT
+        s.SeasonID,
+        sk.Season
+      FROM ttblseason s
+      LEFT JOIN tblseasonkey sk
+        ON s.SeasonID = sk.SeasonID
+      WHERE s.BitID = ?
+      ORDER BY sk.sorder, sk.Season
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // KEYWORDS
+    // ==========================================
+
+    const keywords = await query(
+      `
+      SELECT
+        KeywordID,
+        Keywords
+      FROM ttblkeywords
+      WHERE BitID = ?
+      ORDER BY KeywordID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // HYPERLINKS
+    // ==========================================
+
+    const hyperlinks = await query(
+      `
+      SELECT
+        LinkID,
+        Hyperlink
+      FROM ttblhyperlink
+      WHERE BitID = ?
+      ORDER BY LinkID
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // ALBUMS
+    // ==========================================
+
+    const albums = await query(
+      `
+      SELECT
+        a.AlbumID,
+        ak.Album_Name,
+        a.Album_Track
+      FROM ttblalbum a
+      LEFT JOIN tblalbumkey ak
+        ON a.AlbumID = ak.AlbumID
+      WHERE a.BitID = ?
+      ORDER BY ak.Album_Name, a.Album_Track
+      `,
+      [bitID]
+    );
+
+
+    // ==========================================
+    // RETURN COMPLETE BIT
+    // ==========================================
+
+    res.json({
+
+      // Main information
+      bitID: bit.BitID,
+      title: bit.Title || "",
+      type: bit.Type || "",
+      artist: bit.ArtistID || "",
+      artistName: bit.ArtistName || "",
+      date: bit.AirDate
+        ? new Date(bit.AirDate).toISOString().split("T")[0]
+        : "",
+      time: bit.Time || "",
+      autoNum: bit.ProphetNum || "",
+
+
+      // Categories
+      categories: categories.map(row => ({
+        id: row.CatID,
+        name: row.Category
+      })),
+
+
+      // Subjects
+      subjects: subjects.map(row => ({
+        id: row.SubID,
+        name: row.Subject
+      })),
+
+
+      // Celebrities
+      celebrities: celebrities.map(row => ({
+        id: row.CelebID,
+        name: row.Name
+      })),
+
+
+      // Sports
+      sports: sports.map(row => ({
+        id: row.SportID,
+        name: row.Sport
+      })),
+
+
+      // Seasons
+      seasons: seasons.map(row => ({
+        id: row.SeasonID,
+        name: row.Season
+      })),
+
+
+      // Keywords
+      keywords: keywords.map(row => row.Keywords),
+
+
+      // Hyperlinks
+      hyperlinks: hyperlinks.map(row => row.Hyperlink),
+
+
+      // Albums
+      albums: albums.map(row => ({
+        id: row.AlbumID,
+        name: row.Album_Name,
+        track: row.Album_Track || ""
+      }))
+
+    });
+
+  } catch (err) {
+
+    console.error("FULL BIT GET ERROR:");
+    console.error(err);
+
+    return res.status(500).json({
+      error: "Failed to retrieve complete bit information",
+      details: err.message,
+      sqlMessage: err.sqlMessage || null,
+      code: err.code || null
+    });
+  }
+});
+
+
+// Get celebrity list
+app.get("/api/get/celebrities", (req, res) => {
+    const sql = "SELECT * FROM tblcelebkey ORDER BY Name";
+
+    db.query(sql, (err, result) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        res.send(result);
+    });
+});
+
+// Add celebrity
+app.post("/celebrity", (req, res) => {
+    const name = req.body.name;
+
+    const sql = "INSERT INTO tblcelebkey (Name) VALUES (?)";
+
+    db.query(sql, [name], (err, result) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        res.send(result);
+    });
+});
+
+// Delete celebrity
+app.post("/api/delete/celebrity", (req, res) => {
+    const celebID = req.body.deleteCelebrity;
+
+    const sql = "DELETE FROM tblcelebkey WHERE CelebID = ?";
+
+    db.query(sql, [celebID], (err, result) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        res.send(result);
+    });
+});
+
+
+// Get Seasons
+app.get("/api/get/seasons", (req, res) => {
+    const sql = "SELECT * FROM tblseasonkey ORDER BY sorder, Season";
+
+    db.query(sql, (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+// Insert Season
+app.post("/api/insert/season", (req, res) => {
+    const season = req.body.season;
+
+    const sql = "INSERT INTO tblseasonkey (Season) VALUES (?)";
+
+    db.query(sql, [season], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+// Delete Season
+app.post("/api/delete/season", (req, res) => {
+    const id = req.body.deleteSeason;
+
+    const sql = "DELETE FROM tblseasonkey WHERE SeasonID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+app.get("/api/get/sports", (req, res) => {
+    const sql = "SELECT * FROM tblsportskey ORDER BY Sport";
+
+    db.query(sql, (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+app.post("/api/insert/sport", (req, res) => {
+    const sport = req.body.sport;
+
+    const sql = "INSERT INTO tblsportskey (Sport) VALUES (?)";
+
+    db.query(sql, [sport], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+app.post("/api/delete/sport", (req, res) => {
+    const id = req.body.deleteSport;
+
+    const sql = "DELETE FROM tblsportskey WHERE SportID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+app.get("/api/get/subjects", (req, res) => {
+    const sql = "SELECT * FROM tblsubjectkey ORDER BY Subject";
+
+    db.query(sql, (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+app.post("/api/insert/subject", (req, res) => {
+    const subject = req.body.subject;
+
+    const sql = "INSERT INTO tblsubjectkey (Subject) VALUES (?)";
+
+    db.query(sql, [subject], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+app.post("/api/delete/subject", (req, res) => {
+    const id = req.body.deleteSubject;
+
+    const sql = "DELETE FROM tblsubjectkey WHERE SubID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) console.log(err);
+        else res.send(result);
+    });
+});
+
+// Get Albums
+app.get("/api/get/albums", (req, res) => {
+    const sql = "SELECT * FROM tblalbumkey ORDER BY Album_Name";
+
+    db.query(sql, (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Failed to get albums" });
+        }
+
+        res.send(result);
+    });
+});
+
+
+// Insert Album
+app.post("/api/insert/album", (req, res) => {
+    const album = req.body.album;
+
+    const sql = "INSERT INTO tblalbumkey (Album_Name) VALUES (?)";
+
+    db.query(sql, [album], (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Failed to insert album" });
+        }
+
+        res.send(result);
+    });
+});
+
+
+// Delete Album
+app.post("/api/delete/album", (req, res) => {
+    const id = req.body.deleteAlbum;
+
+    const sql = "DELETE FROM tblalbumkey WHERE AlbumID = ?";
+
+    db.query(sql, [id], (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Failed to delete album" });
+        }
+
+        res.send(result);
+    });
+});
+const testArtistId = 1;
+// Start server
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+  const sqlStartup = "SELECT Name FROM tblartist WHERE ArtistID = 2;";
+
+  // Executes right when the server starts listening
+  db.query(sqlStartup, (err, result) => {
+    if (err) {
+      console.log("Database error on startup:", err.message);
+      return;
+    }
+    
+})});
