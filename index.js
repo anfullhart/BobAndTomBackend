@@ -241,25 +241,326 @@ app.get("/", (req, res) => {
   });
 });
 
-
-
 // ============================================================
-// ADMIN DASHBOARD
+// ADMIN USER MANAGEMENT
 // ============================================================
 
+// GET ALL USERS
 app.get(
-  "/api/admin/dashboard",
+  "/api/admin/users",
 
   isAuthenticated,
-
   requireRole("admin", "owner"),
 
-  (req, res) => {
+  async (req, res) => {
 
-    res.json({
-      message: "Welcome to the admin dashboard",
-      user: req.session.user
-    });
+    try {
+
+      const users = await query(
+        `
+        SELECT
+          userid,
+          login,
+          role
+        FROM tbllogin
+        ORDER BY userid ASC
+        `
+      );
+
+      res.json(users);
+
+    } catch (err) {
+
+      console.error(
+        "GET ADMIN USERS ERROR:",
+        err
+      );
+
+      res.status(500).json({
+        error: "Failed to load users"
+      });
+
+    }
+
+  }
+);
+
+
+// ============================================================
+// ADD USER
+// ============================================================
+
+app.post(
+  "/api/admin/users",
+
+  isAuthenticated,
+  requireRole("admin", "owner"),
+
+  async (req, res) => {
+
+    const {
+      username,
+      password,
+      role
+    } = req.body;
+
+    if (!username || !password || !role) {
+
+      return res.status(400).json({
+        error: "Username, password and role are required"
+      });
+
+    }
+
+    try {
+
+      // Check if username already exists
+
+      const existing = await query(
+        `
+        SELECT userid
+        FROM tbllogin
+        WHERE login = ?
+        LIMIT 1
+        `,
+        [username]
+      );
+
+      if (existing.length > 0) {
+
+        return res.status(409).json({
+          error: "Username already exists"
+        });
+
+      }
+
+      const result = await query(
+        `
+        INSERT INTO tbllogin
+        (
+          login,
+          pass,
+          role
+        )
+        VALUES (?, ?, ?)
+        `,
+        [
+          username,
+          password,
+          role
+        ]
+      );
+
+      res.status(201).json({
+
+        message: "User created successfully",
+
+        user: {
+          userid: result.insertId,
+          login: username,
+          role
+        }
+
+      });
+
+    } catch (err) {
+
+      console.error(
+        "CREATE ADMIN USER ERROR:",
+        err
+      );
+
+      res.status(500).json({
+        error: "Failed to create user"
+      });
+
+    }
+
+  }
+);
+
+
+// ============================================================
+// UPDATE USER
+// ============================================================
+
+app.put(
+  "/api/admin/users/:userid",
+
+  isAuthenticated,
+  requireRole("admin", "owner"),
+
+  async (req, res) => {
+
+    const userid =
+      req.params.userid;
+
+    const {
+      username,
+      password,
+      role
+    } = req.body;
+
+    if (!username || !role) {
+
+      return res.status(400).json({
+        error: "Username and role are required"
+      });
+
+    }
+
+    try {
+
+      // Check username isn't being used by another user
+
+      const existing = await query(
+        `
+        SELECT userid
+        FROM tbllogin
+        WHERE login = ?
+        AND userid != ?
+        LIMIT 1
+        `,
+        [
+          username,
+          userid
+        ]
+      );
+
+      if (existing.length > 0) {
+
+        return res.status(409).json({
+          error: "Username already exists"
+        });
+
+      }
+
+      // Update password only if one was supplied
+
+      if (
+        password &&
+        String(password).trim() !== ""
+      ) {
+
+        await query(
+          `
+          UPDATE tbllogin
+          SET
+            login = ?,
+            pass = ?,
+            role = ?
+          WHERE userid = ?
+          `,
+          [
+            username,
+            password,
+            role,
+            userid
+          ]
+        );
+
+      } else {
+
+        await query(
+          `
+          UPDATE tbllogin
+          SET
+            login = ?,
+            role = ?
+          WHERE userid = ?
+          `,
+          [
+            username,
+            role,
+            userid
+          ]
+        );
+
+      }
+
+      res.json({
+        message: "User updated successfully"
+      });
+
+    } catch (err) {
+
+      console.error(
+        "UPDATE ADMIN USER ERROR:",
+        err
+      );
+
+      res.status(500).json({
+        error: "Failed to update user"
+      });
+
+    }
+
+  }
+);
+
+
+// ============================================================
+// DELETE USER
+// ============================================================
+
+app.delete(
+  "/api/admin/users/:userid",
+
+  isAuthenticated,
+  requireRole("admin", "owner"),
+
+  async (req, res) => {
+
+    const userid =
+      req.params.userid;
+
+    try {
+
+      // Don't allow a user to delete their own account
+
+      if (
+        Number(userid) ===
+        Number(req.session.user.userid)
+      ) {
+
+        return res.status(400).json({
+          error: "You cannot delete your own account"
+        });
+
+      }
+
+      const result = await query(
+        `
+        DELETE FROM tbllogin
+        WHERE userid = ?
+        `,
+        [userid]
+      );
+
+      if (result.affectedRows === 0) {
+
+        return res.status(404).json({
+          error: "User not found"
+        });
+
+      }
+
+      res.json({
+        message: "User deleted successfully"
+      });
+
+    } catch (err) {
+
+      console.error(
+        "DELETE ADMIN USER ERROR:",
+        err
+      );
+
+      res.status(500).json({
+        error: "Failed to delete user"
+      });
+
+    }
 
   }
 );
