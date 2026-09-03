@@ -13,51 +13,127 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+
 // ============================================================
 // DATABASE CONNECTION
 // ============================================================
-console.log("Database Environment Check:");
-console.log("MYSQLHOST:", process.env.MYSQLHOST ? "SET" : "MISSING");
-console.log("MYSQLUSER:", process.env.MYSQLUSER ? "SET" : "MISSING");
-console.log("MYSQLPASSWORD:", process.env.MYSQLPASSWORD ? "SET" : "MISSING");
-console.log("MYSQLDATABASE:", process.env.MYSQLDATABASE ? "SET" : "MISSING");
-console.log("MYSQLPORT:", process.env.MYSQLPORT ? "SET" : "MISSING");
-console.log("PORT:", process.env.PORT);
+
+console.log("==========================================");
+console.log("DATABASE ENVIRONMENT CHECK");
+console.log("DB_HOST:", process.env.DB_HOST ? "FOUND" : "MISSING");
+console.log("DB_USER:", process.env.DB_USER ? "FOUND" : "MISSING");
+console.log("DB_PASS:", process.env.DB_PASS ? "FOUND" : "MISSING");
+console.log("DB_NAME:", process.env.DB_NAME ? "FOUND" : "MISSING");
+console.log("PORT:", PORT);
+console.log("==========================================");
 
 
 const dbPool = mysql.createPool({
-  host: process.env.MYSQLHOST,
-  user: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  port: Number(process.env.MYSQLPORT),
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
+
 const db = dbPool;
 
-const sessionStore = new MySQLStore(
-  {
-    createDatabaseTable: true,
-    schema: {
-      tableName: "sessions"
-    }
-  },
-  dbPool
+
+// ============================================================
+// TEST DATABASE CONNECTION
+// ============================================================
+
+db.getConnection((err, connection) => {
+
+  if (err) {
+
+    console.error("==========================================");
+    console.error("DATABASE CONNECTION FAILED");
+    console.error(err);
+    console.error("==========================================");
+
+    return;
+  }
+
+  console.log("==========================================");
+  console.log("DATABASE CONNECTED SUCCESSFULLY");
+  console.log("==========================================");
+
+  connection.release();
+
+});
+
+
+// ============================================================
+// SESSION STORE
+// ============================================================
+
+const sessionStore = new MySQLStore({}, dbPool);
+
+
+// ============================================================
+// CORS
+// ============================================================
+
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true
+  })
 );
 
-// Test database connection on startup
-dbPool.getConnection((err, connection) => {
-  if (err) {
-    console.error("DATABASE CONNECTION FAILED:");
-    console.error(err.message);
-  } else {
-    console.log("Database connected successfully!");
-    connection.release();
-  }
-});
+
+// ============================================================
+// SESSION
+// ============================================================
+
+app.use(
+  session({
+    secret:
+      process.env.SESSION_SECRET ||
+      "bits_fallback_secure_string_secret",
+
+    store: sessionStore,
+
+    resave: false,
+
+    saveUninitialized: false,
+
+    key: "bits_session_id",
+
+    cookie: {
+
+      secure: process.env.NODE_ENV === "production",
+
+      httpOnly: true,
+
+      sameSite:
+        process.env.NODE_ENV === "production"
+          ? "none"
+          : "lax"
+
+    }
+
+  })
+);
+
+
+// ============================================================
+// BODY PARSING
+// ============================================================
+
+app.use(express.json());
+
+app.use(
+  bodyParser.urlencoded({
+    extended: true
+  })
+);
 
 // ============================================================
 // MIDDLEWARE
