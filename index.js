@@ -999,6 +999,407 @@ app.get("/api/get/log/details/:RS_ID", (req, res) => {
 });
 
 
+// ============================================================
+// UPDATE COMPLETE BIT
+// ============================================================
+
+app.post("/api/update/bit", async (req, res) => {
+  const {
+    bitID,
+    type,
+    title,
+    category,
+    artist,
+    date,
+    time,
+    autoNum,
+
+    subjects = [],
+
+    celebrity1,
+    celebrity2,
+
+    sport,
+    season,
+
+    keywords,
+
+    hyperlinks = [],
+
+    albums = []
+  } = req.body;
+
+  // ==========================================================
+  // VALIDATE BIT ID
+  // ==========================================================
+
+  if (!bitID) {
+    return res.status(400).json({
+      error: "BitID is required"
+    });
+  }
+
+  // ==========================================================
+  // PROMISE QUERY HELPER
+  // ==========================================================
+
+  const query = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.query(sql, params, (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  };
+
+  try {
+
+    console.log("==========================================");
+    console.log("UPDATING BIT:", bitID);
+    console.log("PAYLOAD:", req.body);
+    console.log("==========================================");
+
+
+    // ==========================================================
+    // 1. UPDATE MAIN BIT TABLE
+    // ==========================================================
+
+    await query(
+      `
+      UPDATE tblbits
+      SET
+        AirDate = ?,
+        Title = ?,
+        ArtistID = ?,
+        ProphetNum = ?,
+        Time = ?,
+        Type = ?
+      WHERE BitID = ?
+      `,
+      [
+        date || null,
+        title || null,
+        artist || null,
+        autoNum || null,
+        time || null,
+        type || null,
+        bitID
+      ]
+    );
+
+
+    // ==========================================================
+    // 2. DELETE OLD RELATIONSHIP DATA
+    // ==========================================================
+
+    await query(
+      "DELETE FROM ttblcategory WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblsubject WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblceleb WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblsports WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblseason WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblkeywords WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblhyperlink WHERE BitID = ?",
+      [bitID]
+    );
+
+    await query(
+      "DELETE FROM ttblalbum WHERE BitID = ?",
+      [bitID]
+    );
+
+
+    // ==========================================================
+    // 3. CATEGORY
+    // ==========================================================
+
+    if (category) {
+
+      await query(
+        `
+        INSERT INTO ttblcategory
+        (BitID, CatID)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          category
+        ]
+      );
+
+    }
+
+
+    // ==========================================================
+    // 4. SUBJECTS
+    // ==========================================================
+
+    const cleanSubjects = Array.isArray(subjects)
+      ? [...new Set(
+          subjects.filter(
+            subject =>
+              subject !== null &&
+              subject !== undefined &&
+              subject !== ""
+          )
+        )]
+      : [];
+
+    if (cleanSubjects.length > 0) {
+
+      const subjectValues =
+        cleanSubjects.map(subID => [
+          bitID,
+          subID
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblsubject
+        (BitID, SubID)
+        VALUES ?
+        `,
+        [subjectValues]
+      );
+
+    }
+
+
+    // ==========================================================
+    // 5. CELEBRITIES
+    // ==========================================================
+
+    const celebrities = [
+      celebrity1,
+      celebrity2
+    ].filter(
+      celebrity =>
+        celebrity !== null &&
+        celebrity !== undefined &&
+        celebrity !== ""
+    );
+
+    const cleanCelebrities =
+      [...new Set(celebrities)];
+
+    if (cleanCelebrities.length > 0) {
+
+      const celebrityValues =
+        cleanCelebrities.map(celebID => [
+          bitID,
+          celebID
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblceleb
+        (BitID, CelebID)
+        VALUES ?
+        `,
+        [celebrityValues]
+      );
+
+    }
+
+
+    // ==========================================================
+    // 6. SPORT
+    // ==========================================================
+
+    if (sport) {
+
+      await query(
+        `
+        INSERT INTO ttblsports
+        (BitID, SportID)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          sport
+        ]
+      );
+
+    }
+
+
+    // ==========================================================
+    // 7. SEASON
+    // ==========================================================
+
+    if (season) {
+
+      await query(
+        `
+        INSERT INTO ttblseason
+        (BitID, SeasonID)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          season
+        ]
+      );
+
+    }
+
+
+    // ==========================================================
+    // 8. KEYWORDS
+    // ==========================================================
+
+    if (
+      keywords &&
+      String(keywords).trim() !== ""
+    ) {
+
+      await query(
+        `
+        INSERT INTO ttblkeywords
+        (BitID, Keywords)
+        VALUES (?, ?)
+        `,
+        [
+          bitID,
+          String(keywords).trim()
+        ]
+      );
+
+    }
+
+
+    // ==========================================================
+    // 9. HYPERLINKS
+    // ==========================================================
+
+    const cleanHyperlinks =
+      Array.isArray(hyperlinks)
+        ? hyperlinks
+            .filter(
+              link =>
+                link &&
+                String(link).trim() !== ""
+            )
+            .map(
+              link =>
+                String(link).trim()
+            )
+        : [];
+
+    if (cleanHyperlinks.length > 0) {
+
+      const hyperlinkValues =
+        cleanHyperlinks.map(link => [
+          bitID,
+          link
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblhyperlink
+        (BitID, Hyperlink)
+        VALUES ?
+        `,
+        [hyperlinkValues]
+      );
+
+    }
+
+
+    // ==========================================================
+    // 10. ALBUMS
+    // ==========================================================
+
+    const cleanAlbums =
+      Array.isArray(albums)
+        ? albums.filter(
+            album =>
+              album &&
+              album.album !== null &&
+              album.album !== undefined &&
+              album.album !== ""
+          )
+        : [];
+
+    if (cleanAlbums.length > 0) {
+
+      const albumValues =
+        cleanAlbums.map(album => [
+          bitID,
+          album.album,
+          album.track || null
+        ]);
+
+      await query(
+        `
+        INSERT INTO ttblalbum
+        (BitID, AlbumID, Album_Track)
+        VALUES ?
+        `,
+        [albumValues]
+      );
+
+    }
+
+
+    // ==========================================================
+    // SUCCESS
+    // ==========================================================
+
+    console.log(
+      `BIT ${bitID} UPDATED SUCCESSFULLY`
+    );
+
+    return res.status(200).json({
+      message: "Bit updated successfully",
+      bitID
+    });
+
+
+  } catch (err) {
+
+    console.error(
+      "UPDATE BIT ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      error: "Failed to update bit",
+      details: err.message,
+      sqlMessage: err.sqlMessage || null,
+      code: err.code || null
+    });
+
+  }
+
+});
 
 app.get("/api/get/bit/edit/:bitID", async (req, res) => {
   const bitID = req.params.bitID;
@@ -1240,474 +1641,6 @@ app.get("/api/get/bit/edit/:bitID", async (req, res) => {
 });
 
 
-// ============================================================
-// UPDATE COMPLETE BIT
-// ============================================================
-
-app.post("/api/update/bit/", (req, res) => {
-  const {
-    bitID,
-    type,
-    title,
-    category,
-    artist,
-    date,
-    time,
-    autoNum,
-
-    subjects = [],
-
-    celebrity1,
-    celebrity2,
-
-    sport,
-    season,
-
-    keywords,
-
-    hyperlinks = [],
-
-    albums = []
-  } = req.body;
-
-  if (!bitID) {
-    return res.status(400).json({
-      error: "BitID is required"
-    });
-  }
-
-  const connection = db;
-
-  // ------------------------------------------------------------
-  // Update main bit
-  // ------------------------------------------------------------
-
-  const updateBitSQL = `
-    UPDATE tblbits
-    SET
-      AirDate = ?,
-      Title = ?,
-      ArtistID = ?,
-      ProphetNum = ?,
-      Time = ?,
-      Type = ?
-    WHERE BitID = ?
-  `;
-
-  connection.query(
-    updateBitSQL,
-    [
-      date || null,
-      title || null,
-      artist || null,
-      autoNum || null,
-      time || null,
-      type || null,
-      bitID
-    ],
-    (err) => {
-      if (err) {
-        console.error("UPDATE BIT ERROR:", err);
-
-        return res.status(500).json({
-          error: "Failed to update bit",
-          details: err.message
-        });
-      }
-
-      // ----------------------------------------------------------
-      // CATEGORY
-      // ----------------------------------------------------------
-
-      connection.query(
-        "DELETE FROM tblcategory WHERE BitID = ?",
-        [bitID],
-        (err) => {
-          if (err) {
-            console.error("DELETE CATEGORY ERROR:", err);
-            return res.status(500).json({
-              error: "Failed to update category",
-              details: err.message
-            });
-          }
-
-          if (!category) {
-            updateSubjects();
-            return;
-          }
-
-          connection.query(
-            "INSERT INTO tblcategory (BitID, CatID) VALUES (?, ?)",
-            [bitID, category],
-            (err) => {
-              if (err) {
-                console.error("INSERT CATEGORY ERROR:", err);
-                return res.status(500).json({
-                  error: "Failed to update category",
-                  details: err.message
-                });
-              }
-
-              updateSubjects();
-            }
-          );
-        }
-      );
-
-      // ----------------------------------------------------------
-      // SUBJECTS
-      // ----------------------------------------------------------
-
-      function updateSubjects() {
-        connection.query(
-          "DELETE FROM tblsubject WHERE BitID = ?",
-          [bitID],
-          (err) => {
-            if (err) {
-              console.error("DELETE SUBJECT ERROR:", err);
-              return res.status(500).json({
-                error: "Failed to update subjects",
-                details: err.message
-              });
-            }
-
-            const cleanSubjects = Array.isArray(subjects)
-              ? subjects.filter(Boolean)
-              : [];
-
-            if (cleanSubjects.length === 0) {
-              updateCelebrities();
-              return;
-            }
-
-            const subjectValues = cleanSubjects.map(subID => [
-              bitID,
-              subID
-            ]);
-
-            connection.query(
-              "INSERT INTO tblsubject (BitID, SubID) VALUES ?",
-              [subjectValues],
-              (err) => {
-                if (err) {
-                  console.error("INSERT SUBJECT ERROR:", err);
-                  return res.status(500).json({
-                    error: "Failed to update subjects",
-                    details: err.message
-                  });
-                }
-
-                updateCelebrities();
-              }
-            );
-          }
-        );
-      }
-
-      // ----------------------------------------------------------
-      // CELEBRITIES
-      // ----------------------------------------------------------
-
-      function updateCelebrities() {
-        connection.query(
-          "DELETE FROM tblceleb WHERE BitID = ?",
-          [bitID],
-          (err) => {
-            if (err) {
-              console.error("DELETE CELEBRITY ERROR:", err);
-              return res.status(500).json({
-                error: "Failed to update celebrities",
-                details: err.message
-              });
-            }
-
-            if (!celebrity1 && !celebrity2) {
-              updateSport();
-              return;
-            }
-
-            connection.query(
-              `
-              INSERT INTO tblceleb
-              (BitID, Celeb1_ID, Celeb2_ID)
-              VALUES (?, ?, ?)
-              `,
-              [
-                bitID,
-                celebrity1 || null,
-                celebrity2 || null
-              ],
-              (err) => {
-                if (err) {
-                  console.error("INSERT CELEBRITY ERROR:", err);
-                  return res.status(500).json({
-                    error: "Failed to update celebrities",
-                    details: err.message
-                  });
-                }
-
-                updateSport();
-              }
-            );
-          }
-        );
-      }
-
-      // ----------------------------------------------------------
-      // SPORT
-      // ----------------------------------------------------------
-
-      function updateSport() {
-        connection.query(
-          "DELETE FROM tblsports WHERE BitID = ?",
-          [bitID],
-          (err) => {
-            if (err) {
-              console.error("DELETE SPORT ERROR:", err);
-              return res.status(500).json({
-                error: "Failed to update sport",
-                details: err.message
-              });
-            }
-
-            if (!sport) {
-              updateSeason();
-              return;
-            }
-
-            connection.query(
-              `
-              INSERT INTO tblsports
-              (BitID, SportID)
-              VALUES (?, ?)
-              `,
-              [bitID, sport],
-              (err) => {
-                if (err) {
-                  console.error("INSERT SPORT ERROR:", err);
-                  return res.status(500).json({
-                    error: "Failed to update sport",
-                    details: err.message
-                  });
-                }
-
-                updateSeason();
-              }
-            );
-          }
-        );
-      }
-
-      // ----------------------------------------------------------
-      // SEASON
-      // ----------------------------------------------------------
-
-      function updateSeason() {
-        connection.query(
-          "DELETE FROM tblseason WHERE BitID = ?",
-          [bitID],
-          (err) => {
-            if (err) {
-              console.error("DELETE SEASON ERROR:", err);
-              return res.status(500).json({
-                error: "Failed to update season",
-                details: err.message
-              });
-            }
-
-            if (!season) {
-              updateKeywords();
-              return;
-            }
-
-            connection.query(
-              `
-              INSERT INTO tblseason
-              (BitID, SeasonID)
-              VALUES (?, ?)
-              `,
-              [bitID, season],
-              (err) => {
-                if (err) {
-                  console.error("INSERT SEASON ERROR:", err);
-                  return res.status(500).json({
-                    error: "Failed to update season",
-                    details: err.message
-                  });
-                }
-
-                updateKeywords();
-              }
-            );
-          }
-        );
-      }
-
-      // ----------------------------------------------------------
-      // KEYWORDS
-      // ----------------------------------------------------------
-
-      function updateKeywords() {
-        connection.query(
-          "DELETE FROM tblkeywords WHERE BitID = ?",
-          [bitID],
-          (err) => {
-            if (err) {
-              console.error("DELETE KEYWORDS ERROR:", err);
-              return res.status(500).json({
-                error: "Failed to update keywords",
-                details: err.message
-              });
-            }
-
-            if (!keywords || !keywords.trim()) {
-              updateHyperlinks();
-              return;
-            }
-
-            connection.query(
-              `
-              INSERT INTO tblkeywords
-              (BitID, Keywords)
-              VALUES (?, ?)
-              `,
-              [bitID, keywords],
-              (err) => {
-                if (err) {
-                  console.error("INSERT KEYWORDS ERROR:", err);
-                  return res.status(500).json({
-                    error: "Failed to update keywords",
-                    details: err.message
-                  });
-                }
-
-                updateHyperlinks();
-              }
-            );
-          }
-        );
-      }
-
-      // ----------------------------------------------------------
-      // HYPERLINKS
-      // ----------------------------------------------------------
-
-      function updateHyperlinks() {
-        connection.query(
-          "DELETE FROM tblhyperlink WHERE BitID = ?",
-          [bitID],
-          (err) => {
-            if (err) {
-              console.error("DELETE HYPERLINK ERROR:", err);
-              return res.status(500).json({
-                error: "Failed to update hyperlinks",
-                details: err.message
-              });
-            }
-
-            const cleanLinks = Array.isArray(hyperlinks)
-              ? hyperlinks
-                  .filter(link => link && link.trim() !== "")
-                  .map(link => link.trim())
-              : [];
-
-            if (cleanLinks.length === 0) {
-              updateAlbums();
-              return;
-            }
-
-            const hyperlinkValues = cleanLinks.map(link => [
-              bitID,
-              link
-            ]);
-
-            connection.query(
-              `
-              INSERT INTO tblhyperlink
-              (BitID, Hyperlink)
-              VALUES ?
-              `,
-              [hyperlinkValues],
-              (err) => {
-                if (err) {
-                  console.error("INSERT HYPERLINK ERROR:", err);
-                  return res.status(500).json({
-                    error: "Failed to update hyperlinks",
-                    details: err.message
-                  });
-                }
-
-                updateAlbums();
-              }
-            );
-          }
-        );
-      }
-
-      // ----------------------------------------------------------
-      // ALBUMS
-      // ----------------------------------------------------------
-
-      function updateAlbums() {
-        connection.query(
-          "DELETE FROM tblalbum WHERE BitID = ?",
-          [bitID],
-          (err) => {
-            if (err) {
-              console.error("DELETE ALBUM ERROR:", err);
-              return res.status(500).json({
-                error: "Failed to update albums",
-                details: err.message
-              });
-            }
-
-            const cleanAlbums = Array.isArray(albums)
-              ? albums.filter(
-                  album => album && album.album
-                )
-              : [];
-
-            if (cleanAlbums.length === 0) {
-              return res.json({
-                message: "Bit updated successfully",
-                bitID
-              });
-            }
-
-            const albumValues = cleanAlbums.map(album => [
-              bitID,
-              album.album,
-              album.track || null
-            ]);
-
-            connection.query(
-              `
-              INSERT INTO tblalbum
-              (BitID, AlbumID, Album_Track)
-              VALUES ?
-              `,
-              [albumValues],
-              (err) => {
-                if (err) {
-                  console.error("INSERT ALBUM ERROR:", err);
-                  return res.status(500).json({
-                    error: "Failed to update albums",
-                    details: err.message
-                  });
-                }
-
-                return res.json({
-                  message: "Bit updated successfully",
-                  bitID
-                });
-              }
-            );
-          }
-        );
-      }
-    }
-  );
-});
 
 // Artist routes
 app.post("/artist/", (req, res) => {
