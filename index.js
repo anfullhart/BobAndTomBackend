@@ -1624,20 +1624,26 @@ app.get(
 
   async (req, res) => {
 
-    const bitID =
-      req.params.bitID;
+    console.log("========================================");
+    console.log("GET BIT EDIT ROUTE HIT");
+    console.log("Requested URL:", req.originalUrl);
+    console.log("Params:", req.params);
+    console.log("bitID:", req.params.bitID);
+    console.log("========================================");
+
+    const bitID = req.params.bitID;
 
     if (!bitID) {
 
+      console.log("ERROR: bitID was missing");
+
       return res.status(400).json({
-        error:
-          "BitID is required"
+        error: "BitID is required"
       });
 
     }
 
     try {
-
       // ======================================================
       // MAIN BIT
       // ======================================================
@@ -2223,245 +2229,6 @@ app.get(
   }
 );
 
-
-
-// ======================================================
-// GET COMPLETE BIT DETAILS FOR DETAILED BIT RESULTS PAGE
-// ======================================================
-
-app.get("/api/get/bit/edit/:BitID", async (req, res) => {
-  const { BitID } = req.params;
-
-  try {
-    // ------------------------------------------
-    // MAIN BIT INFORMATION
-    // ------------------------------------------
-
-    const [bitRows] = await pool.query(
-      `
-      SELECT
-        b.BitID,
-        b.Title,
-        b.Type,
-        b.Category,
-        b.Artist,
-        b.Date,
-        b.Time,
-        b.AutoNum
-      FROM tblbits b
-      WHERE b.BitID = ?
-      `,
-      [BitID]
-    );
-
-    if (bitRows.length === 0) {
-      return res.status(404).json({
-        error: "Bit not found"
-      });
-    }
-
-    const bit = bitRows[0];
-
-
-    // ------------------------------------------
-    // CATEGORIES
-    // ------------------------------------------
-
-    const [categoryRows] = await pool.query(
-      `
-      SELECT c.Category
-      FROM tblcategory c
-      INNER JOIN tblbitcategory bc
-        ON c.CatID = bc.CatID
-      WHERE bc.BitID = ?
-      `,
-      [BitID]
-    );
-
-
-    // ------------------------------------------
-    // SUBJECTS
-    // ------------------------------------------
-
-    const [subjectRows] = await pool.query(
-      `
-      SELECT s.Subject
-      FROM tblsubjectkey s
-      INNER JOIN tblsubject bs
-        ON s.SubID = bs.SubID
-      WHERE bs.BitID = ?
-      `,
-      [BitID]
-    );
-
-
-    // ------------------------------------------
-    // CELEBRITIES
-    // ------------------------------------------
-
-    const [celebrityRows] = await pool.query(
-      `
-      SELECT ck.Name
-      FROM tblceleb c
-      INNER JOIN tblcelebkey ck
-        ON ck.CelebID = c.Celeb1_ID
-      WHERE c.BitID = ?
-
-      UNION
-
-      SELECT ck.Name
-      FROM tblceleb c
-      INNER JOIN tblcelebkey ck
-        ON ck.CelebID = c.Celeb2_ID
-      WHERE c.BitID = ?
-      `,
-      [BitID, BitID]
-    );
-
-
-    // ------------------------------------------
-    // SPORTS
-    // ------------------------------------------
-
-    const [sportRows] = await pool.query(
-      `
-      SELECT sk.Sport
-      FROM tblsportskey sk
-      INNER JOIN tblsports bs
-        ON sk.SportID = bs.SportID
-      WHERE bs.BitID = ?
-      `,
-      [BitID]
-    );
-
-
-    // ------------------------------------------
-    // SEASONS
-    // ------------------------------------------
-
-    const [seasonRows] = await pool.query(
-      `
-      SELECT sk.Season
-      FROM tblseasonkey sk
-      INNER JOIN tblseason bs
-        ON sk.SeasonID = bs.SeasonID
-      WHERE bs.BitID = ?
-      `,
-      [BitID]
-    );
-
-
-    // ------------------------------------------
-    // KEYWORDS
-    // ------------------------------------------
-
-    const [keywordRows] = await pool.query(
-      `
-      SELECT Keyword
-      FROM tblkeywords
-      WHERE BitID = ?
-      `,
-      [BitID]
-    );
-
-
-    // ------------------------------------------
-    // HYPERLINKS
-    // ------------------------------------------
-
-    const [hyperlinkRows] = await pool.query(
-      `
-      SELECT Hyperlink
-      FROM tblhyperlink
-      WHERE BitID = ?
-      `,
-      [BitID]
-    );
-
-
-    // ------------------------------------------
-    // ALBUMS
-    // ------------------------------------------
-
-    const [albumRows] = await pool.query(
-      `
-      SELECT
-        a.Album_Name AS album,
-        ba.Track AS track
-      FROM tblbitalbum ba
-      INNER JOIN tblalbum a
-        ON ba.AlbumID = a.AlbumID
-      WHERE ba.BitID = ?
-      `,
-      [BitID]
-    );
-
-
-    // ------------------------------------------
-    // RETURN EVERYTHING
-    // ------------------------------------------
-
-    res.json({
-      bitID: bit.BitID,
-
-      title: bit.Title,
-
-      type: bit.Type,
-
-      category: bit.Category,
-
-      artist: bit.Artist,
-
-      date: bit.Date,
-
-      time: bit.Time,
-
-      autoNum: bit.AutoNum,
-
-      categories: categoryRows.map(
-        (row) => row.Category
-      ),
-
-      subjects: subjectRows.map(
-        (row) => row.Subject
-      ),
-
-      celebrities: celebrityRows.map(
-        (row) => row.Name
-      ),
-
-      sports: sportRows.map(
-        (row) => row.Sport
-      ),
-
-      seasons: seasonRows.map(
-        (row) => row.Season
-      ),
-
-      keywords: keywordRows
-        .map((row) => row.Keyword)
-        .join(", "),
-
-      hyperlinks: hyperlinkRows.map(
-        (row) => row.Hyperlink
-      ),
-
-      albums: albumRows
-    });
-
-  } catch (error) {
-
-    console.error(
-      "ERROR LOADING BIT DETAILS:",
-      error
-    );
-
-    res.status(500).json({
-      error: "Failed to load bit details"
-    });
-
-  }
-});
 
 
 
