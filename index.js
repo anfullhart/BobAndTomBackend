@@ -241,6 +241,17 @@ app.get("/", (req, res) => {
   });
 });
 
+// TEMPORARY DEBUG ROUTE
+app.get("/api/get/bit/edit/:bitID", (req, res) => {
+  console.log("DEBUG: EDIT BIT ROUTE HIT");
+  console.log("BitID:", req.params.bitID);
+
+  res.json({
+    message: "EDIT BIT ROUTE WORKING",
+    bitID: req.params.bitID
+  });
+});
+
 // ============================================================
 // ADMIN DASHBOARD
 // ============================================================
