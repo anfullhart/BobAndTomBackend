@@ -3141,13 +3141,61 @@ app.get(
 // ARTIST ROUTES
 // ============================================================
 
+// GET ALL ARTISTS
+app.get(
+  "/api/get/artists",
+
+  (req, res) => {
+
+    db.query(
+      `
+      SELECT
+        ArtistID,
+        Name
+      FROM tblartist
+      ORDER BY Name ASC
+      `,
+
+      (err, result) => {
+
+        if (err) {
+
+          console.error(
+            "GET ARTISTS ERROR:",
+            err
+          );
+
+          return res.status(500).json({
+            error: "Failed to get artists"
+          });
+
+        }
+
+        res.json(result);
+
+      }
+    );
+
+  }
+);
+
+
+// INSERT ARTIST
 app.post(
-  "/artist/",
+  "/api/insert/artist",
 
   (req, res) => {
 
     const name =
-      req.body.name;
+      String(req.body.name || "").trim();
+
+    if (!name) {
+
+      return res.status(400).json({
+        error: "Artist name is required"
+      });
+
+    }
 
     db.query(
 
@@ -3163,14 +3211,28 @@ app.post(
 
         if (err) {
 
+          console.error(
+            "INSERT ARTIST ERROR:",
+            err
+          );
+
           return res.status(500).json({
-            error:
-              "Failed to insert artist"
+            error: "Failed to insert artist",
+            details: err.message
           });
 
         }
 
-        res.json(result);
+        res.status(201).json({
+
+          message: "Artist added successfully",
+
+          artist: {
+            ArtistID: result.insertId,
+            Name: name
+          }
+
+        });
 
       }
 
@@ -3179,6 +3241,8 @@ app.post(
   }
 );
 
+
+// DELETE ARTIST
 app.post(
   "/api/delete/artist",
 
@@ -3186,6 +3250,14 @@ app.post(
 
     const id =
       req.body.deleteArtist;
+
+    if (!id) {
+
+      return res.status(400).json({
+        error: "ArtistID is required"
+      });
+
+    }
 
     db.query(
 
@@ -3196,20 +3268,24 @@ app.post(
 
       [id],
 
-      (err) => {
+      (err, result) => {
 
         if (err) {
 
+          console.error(
+            "DELETE ARTIST ERROR:",
+            err
+          );
+
           return res.status(500).json({
-            error:
-              "Failed to delete artist"
+            error: "Failed to delete artist",
+            details: err.message
           });
 
         }
 
         res.json({
-          message:
-            "Artist deleted"
+          message: "Artist deleted successfully"
         });
 
       }
@@ -3219,10 +3295,12 @@ app.post(
   }
 );
 
+
 // ============================================================
 // CELEBRITY ROUTES
 // ============================================================
 
+// GET ALL CELEBRITIES
 app.get(
   "/api/get/celebrities",
 
@@ -3231,18 +3309,24 @@ app.get(
     db.query(
 
       `
-      SELECT *
+      SELECT
+        CelebID,
+        Name
       FROM tblcelebkey
-      ORDER BY Name
+      ORDER BY Name ASC
       `,
 
       (err, result) => {
 
         if (err) {
 
+          console.error(
+            "GET CELEBRITIES ERROR:",
+            err
+          );
+
           return res.status(500).json({
-            error:
-              "Failed to get celebrities"
+            error: "Failed to get celebrities"
           });
 
         }
@@ -3256,13 +3340,23 @@ app.get(
   }
 );
 
+
+// INSERT CELEBRITY
 app.post(
-  "/celebrity",
+  "/api/insert/celebrity",
 
   (req, res) => {
 
     const name =
-      req.body.name;
+      String(req.body.name || "").trim();
+
+    if (!name) {
+
+      return res.status(400).json({
+        error: "Celebrity name is required"
+      });
+
+    }
 
     db.query(
 
@@ -3278,14 +3372,29 @@ app.post(
 
         if (err) {
 
+          console.error(
+            "INSERT CELEBRITY ERROR:",
+            err
+          );
+
           return res.status(500).json({
-            error:
-              "Failed to add celebrity"
+            error: "Failed to insert celebrity",
+            details: err.message
           });
 
         }
 
-        res.json(result);
+        res.status(201).json({
+
+          message:
+            "Celebrity added successfully",
+
+          celebrity: {
+            CelebID: result.insertId,
+            Name: name
+          }
+
+        });
 
       }
 
@@ -3294,6 +3403,8 @@ app.post(
   }
 );
 
+
+// DELETE CELEBRITY
 app.post(
   "/api/delete/celebrity",
 
@@ -3301,6 +3412,14 @@ app.post(
 
     const celebID =
       req.body.deleteCelebrity;
+
+    if (!celebID) {
+
+      return res.status(400).json({
+        error: "CelebID is required"
+      });
+
+    }
 
     db.query(
 
@@ -3311,18 +3430,26 @@ app.post(
 
       [celebID],
 
-      (err, result) => {
+      (err) => {
 
         if (err) {
 
+          console.error(
+            "DELETE CELEBRITY ERROR:",
+            err
+          );
+
           return res.status(500).json({
-            error:
-              "Failed to delete celebrity"
+            error: "Failed to delete celebrity",
+            details: err.message
           });
 
         }
 
-        res.json(result);
+        res.json({
+          message:
+            "Celebrity deleted successfully"
+        });
 
       }
 
